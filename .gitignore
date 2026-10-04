@@ -1,0 +1,31 @@
+node_modules/
+dist/
+dist-spec/
+.next/
+out/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+storage/
+# ...except the seeded category shop photographs. Migration 014 names these files, so a deploy
+# that does not carry them leaves the rail full of broken images. Everything the shopkeeper
+# uploads lands in a dated folder beside this one and stays ignored, as an upload should.
+#
+# Git will not look inside a directory it has excluded, so each step of the path has to be let
+# through and its other contents re-excluded — that is what the alternating lines below do.
+!apps/api/storage/
+apps/api/storage/*
+!apps/api/storage/uploads/
+apps/api/storage/uploads/*
+!apps/api/storage/uploads/categories/
+apps/api/storage/uploads/categories/*
+!apps/api/storage/uploads/categories/seed/
+*.tsbuildinfo
+.DS_Store
+apps/mobile/android/app/build/
+apps/mobile/ios/Pods/
+firebase-service-account*.json
+test-results/
+playwright-report/

@@ -1,0 +1,39 @@
+{
+  "name": "@fb/web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fatanpur Bazaar website — Next.js 15 App Router (SSR + ISR), one site, role-based dashboards",
+  "scripts": {
+    "dev": "npm run icons && next dev -p 3001",
+    "build": "npm run icons && next build",
+    "start": "node .next/standalone/apps/web/server.js",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" && tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:e2e": "playwright test",
+    "test": "npm run typecheck",
+    "icons": "node scripts/icon-sprite.mjs"
+  },
+  "dependencies": {
+    "@fb/shared-types": "*",
+    "next": "15.5.4",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "socket.io-client": "4.8.1"
+  },
+  "devDependencies": {
+    "@next/eslint-plugin-next": "^16.3.5",
+    "@playwright/test": "1.55.0",
+    "@types/node": "24.3.0",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.7",
+    "@typescript-eslint/parser": "^8.70.0",
+    "autoprefixer": "10.4.21",
+    "eslint": "9.34.0",
+    "eslint-config-next": "15.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "postcss": "8.5.6",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.9.2"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "fatanpur-bazaar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fatanpur Bazaar (फतनपुर बाज़ार) — single-store e-commerce + delivery platform: NestJS API, Next.js web, React Native app",
+  "workspaces": [
+    "packages/shared-types",
+    "packages/config",
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "scripts": {
+    "build:types": "npm run build --workspace=packages/shared-types",
+    "build:api": "npm run build:types && npm run build --workspace=apps/api",
+    "build:web": "npm run build:types && npm run build --workspace=apps/web",
+    "build": "npm run build:api && npm run build --workspace=apps/web",
+    "lint": "npm run build:types && npm run lint --workspaces --if-present",
+    "typecheck": "npm run build:types && npm run typecheck --workspaces --if-present",
+    "test": "npm run build:types && npm run test --workspace=packages/shared-types && npm run test --workspace=apps/api",
+    "test:unit": "npm run build:types && npm run test:unit --workspace=apps/api",
+    "test:e2e": "npm run test:e2e --workspace=apps/web",
+    "db:migrate": "npm run build:api && npm run migrate --workspace=apps/api",
+    "db:seed": "npm run build:api && npm run seed --workspace=apps/api",
+    "doctor": "npm run build:api && npm run doctor --workspace=apps/api",
+    "seed:admin": "npm run build:api && npm run seed:admin --workspace=apps/api --",
+    "dev:api": "npm run build:types && npm run dev --workspace=apps/api",
+    "dev:web": "npm run build:types && npm run dev --workspace=apps/web",
+    "check:no-spread": "node scripts/check-no-dto-spread.mjs",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "~5.7.3"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.0"
+  }
+}

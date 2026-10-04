@@ -1,0 +1,28 @@
+Fatanpur Bazaar — diagnostic
+2026-09-25T20:07:02.582Z
+============================================================
+      STORAGE_PATH = ./storage
+      PUBLIC_UPLOAD_URL = /uploads
+      API expected at http://127.0.0.1:3000
+      --- migrations ---
+      migrations applied: 14 (latest: 014_category_shop_images)
+      --- categories ---
+      top-level categories: 21
+  ok  categories with a picture in the DB: 16 of 21
+ WARN diwali (दीपावली): no picture — the rail draws its icon instead
+ WARN kheti (खेती-किसानी): no picture — the rail draws its icon instead
+ WARN doctor (डॉक्टर): no picture — the rail draws its icon instead
+ WARN ghar-sewa (घर की सेवाएँ): no picture — the rail draws its icon instead
+ WARN pashu-doctor (पशु डॉक्टर (गाय-भैंस)): no picture — the rail draws its icon instead
+ FAIL API not answering at http://127.0.0.1:3000 (fetch failed). Start it first: npm run dev:api
+      --- product images ---
+  ok  product image files: 0 rows, 0 missing on disk, 0 over 120 KB
+      --- settings ---
+  ok  setting upi_vpa = 8576891104@ybl
+  ok  setting support_phone = 9616038670
+  ok  setting store_open_time = 07:00
+  ok  setting store_close_time = 21:00
+  ok  active service zones: 2
+  ok  active villages: 14 (with none, the village picker is empty and nobody can check out)
+============================================================
+1 FAIL, 5 WARN

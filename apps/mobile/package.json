@@ -1,0 +1,46 @@
+{
+  "name": "@fb/mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fatanpur Bazaar — React Native app (customer + delivery + staff, role-based navigation)",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "scripts": {
+    "android": "react-native run-android",
+    "start": "react-native start",
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "build:types": "npm run build --prefix ../../packages/shared-types"
+  },
+  "dependencies": {
+    "@fb/shared-types": "file:../../packages/shared-types",
+    "@react-native-async-storage/async-storage": "1.24.0",
+    "@react-native-firebase/app": "21.6.1",
+    "@react-native-firebase/messaging": "21.6.1",
+    "@react-navigation/bottom-tabs": "7.2.0",
+    "@react-navigation/native": "7.0.14",
+    "@react-navigation/native-stack": "7.2.0",
+    "react": "18.3.1",
+    "react-native": "0.76.5",
+    "react-native-config": "1.5.3",
+    "react-native-document-picker": "9.3.1",
+    "react-native-geolocation-service": "5.3.1",
+    "react-native-image-picker": "7.1.2",
+    "react-native-keychain": "9.2.2",
+    "react-native-safe-area-context": "4.14.0",
+    "react-native-screens": "4.4.0",
+    "socket.io-client": "4.8.1"
+  },
+  "devDependencies": {
+    "@babel/core": "7.26.0",
+    "@babel/preset-env": "7.26.0",
+    "@react-native/babel-preset": "0.76.5",
+    "@react-native/metro-config": "0.76.5",
+    "@types/react": "18.3.12",
+    "@typescript-eslint/eslint-plugin": "8.15.0",
+    "@typescript-eslint/parser": "8.15.0",
+    "eslint": "8.57.1",
+    "typescript": "~5.7.3"
+  }
+}

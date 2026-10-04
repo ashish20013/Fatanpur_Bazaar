@@ -1,0 +1,19 @@
+-- What the shop actually received for a payment.
+--
+-- Until now refunds were worked out from `amount_final` — the amount the customer OWES after a
+-- weighed-short adjustment — minus `refund_amount`. But the adjustment also adds the difference it
+-- handed back to `refund_amount`, so on a later cancellation that difference was subtracted twice:
+-- a ₹500 UPI order adjusted to ₹400 and then cancelled gave back ₹300 of the ₹500 paid. Adjusted
+-- harder, the sum went negative and nothing was refunded at all.
+--
+-- Owed and received are different numbers, and the refund has to come from the second one:
+--   amount           — what was owed when the order was placed
+--   amount_final     — what is owed now (after any adjustment)
+--   amount_received  — what the customer actually handed over (set when it is paid)   ← new
+--   refund_amount    — how much of it has been given back so far
+--   held             = amount_received − refund_amount
+--
+-- NULL means "not recorded" — every row paid before this column existed. Those fall back to
+-- `amount`, which is exactly what was paid on them: an adjustment reduces what is owed, never what
+-- was received. See domain/payment-money.ts.
+ALTER TABLE payments ADD COLUMN amount_received DECIMAL(10,2) NULL AFTER amount_final;

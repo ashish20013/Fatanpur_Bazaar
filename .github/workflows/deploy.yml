@@ -1,0 +1,111 @@
+name: Build, Test & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# ⚠️ Never run two builds at once (HOSTING_CAPACITY §5 B1) — and never build on the server.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: fb_test
+          MARIADB_USER: fb
+          MARIADB_PASSWORD: fbpass
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      NODE_ENV: test
+      TZ: Asia/Kolkata
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_NAME: fb_test
+      DB_USER: fb
+      DB_PASSWORD: fbpass
+      JWT_SECRET: ${{ secrets.CI_JWT_SECRET || 'ci-jwt-secret-0123456789abcdef0123456789abcdef' }}
+      JWT_REFRESH_SECRET: ci-refresh-secret-0123456789abcdef0123456789abcd
+      APP_SECRET: ci-app-secret-0123456789abcdef0123456789abcdef01
+      ALLOWED_ORIGINS: http://localhost:3001
+      STORAGE_PATH: /tmp/fb-storage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run check:no-spread
+      - run: npm run build:types
+      - run: npm run lint --workspace=apps/api
+      - run: npm test
+      - run: npm run build --workspace=apps/api
+
+  web:
+    needs: api                 # ⚠️ serial — never two builds in parallel
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      NODE_OPTIONS: --max-old-space-size=2048
+      NEXT_PUBLIC_SITE_URL: https://fatanpurbazaar.com
+      NEXT_PUBLIC_API_URL: https://api.fatanpurbazaar.com
+      NEXT_PUBLIC_SOCKET_URL: https://api.fatanpurbazaar.com
+      API_INTERNAL_URL: http://127.0.0.1:3000
+      NEXT_BUILD_OFFLINE: '1'   # build without a live API: pages render from ISR on first request
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run build:types
+      - run: npm run lint --workspace=apps/web
+      # Builds API then web (one after the other) and packs both exactly as the server wants them:
+      # release/api (shared-types vendored, `npm install` works there) and release/web (flat
+      # standalone, entry server.js, nothing to install). Same script the owner runs by hand.
+      - run: node scripts/make-release.mjs
+      - uses: actions/upload-artifact@v4
+        with: { name: api-release, path: release/api, retention-days: 7, include-hidden-files: true }
+      - uses: actions/upload-artifact@v4
+        with: { name: web-release, path: release/web, retention-days: 7, include-hidden-files: true }
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: api-release, path: api-dist }
+      - uses: actions/download-artifact@v4
+        with: { name: web-release, path: web-standalone }
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p ${{ secrets.SSH_PORT || 65002 }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+      - name: Deploy API (keep previous release for rollback)
+        run: |
+          R="${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"; P="-p ${{ secrets.SSH_PORT || 65002 }}"
+          ssh $P $R "cd ~/domains/api.fatanpurbazaar.com && rm -rf public_html.prev && cp -a public_html public_html.prev || true"
+          rsync -az --delete --exclude tmp --exclude .env --exclude storage --exclude node_modules -e "ssh $P" api-dist/ $R:~/domains/api.fatanpurbazaar.com/public_html/
+          ssh $P $R "cd ~/domains/api.fatanpurbazaar.com/public_html && npm install --omit=dev --no-audit --no-fund && node dist/cli.js migrate && mkdir -p tmp && touch tmp/restart.txt"
+      - name: Deploy Web
+        run: |
+          R="${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"; P="-p ${{ secrets.SSH_PORT || 65002 }}"
+          ssh $P $R "cd ~/domains/fatanpurbazaar.com && rm -rf public_html.prev && cp -a public_html public_html.prev || true"
+          rsync -az --delete --exclude tmp --exclude .env --exclude .env.local -e "ssh $P" web-standalone/ $R:~/domains/fatanpurbazaar.com/public_html/
+          ssh $P $R "mkdir -p ~/domains/fatanpurbazaar.com/public_html/tmp && touch ~/domains/fatanpurbazaar.com/public_html/tmp/restart.txt"
+      - name: Smoke check
+        run: |
+          sleep 10
+          curl -fsS https://api.fatanpurbazaar.com/v1/health
+          curl -fsSI https://fatanpurbazaar.com | head -1

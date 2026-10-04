@@ -1,0 +1,608 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Fatanpur Bazaar design tokens.
+ * Emerald + champagne gold come straight from the logo; the page is a warm ivory (not pure white —
+ * less glare on cheap screens in sunlight, easier on the eyes). One radius family, one shadow
+ * family, 4px spacing rhythm, motion ≤150 ms.
+ */
+:root {
+  /*
+   * The green ramp, lifted.
+   *
+   * The old band (#143b25) was so close to black that the header read as a heavy slab rather than
+   * a colour, and everything under it looked like it was sitting in shade. These are a step
+   * lighter and a touch less saturated — saturation is what makes a green look cheap, and depth
+   * is what makes it look expensive, so the depth stays and the shout goes. White type still
+   * clears AA on the band and on the primary button; that is checked, not assumed.
+   */
+  --em-950: #0d2419;
+  --em-900: #123022;
+  --em-800: #1a4330; /* logo dark */
+  --band: #1d4c35; /* header / hero — a colour now, not a shadow */
+  --em-700: #215e3d; /* PRIMARY */
+  --em-600: #29714a; /* hover */
+  --em-500: #37885b;
+  --em-300: #a2c8b2;
+  --em-200: #cee3d6;
+  --em-100: #e8f2ea;
+  --em-50: #f4f9f5;
+
+  --au-800: #6b5117; /* gold text on ivory (AA) */
+  --au-700: #86661f;
+  --au-600: #a8843a;
+  --au-500: #cba954; /* logo */
+  --au-400: #e2c578;
+  --au-300: #ecd598;
+  --au-200: #f2dfac; /* logo light */
+  --au-100: #f8eed2;
+  --au-50: #fcf7e8;
+
+  /*
+   * The whites.
+   *
+   * A card that is pure #fff on a warm ivory page looks like a hole punched in it. Warming the
+   * card by a whisper puts the two on the same light, which is most of what reads as "designed"
+   * — and the page itself is cleaned up a shade so the ivory looks chosen rather than dingy.
+   * Lines go finer and cooler: on a card, a heavy border is the loudest thing on the screen.
+   */
+  --paper: #f8f6f2; /* page — soft ivory, a shade off white */
+  --paper-2: #f0ede6; /* quiet bands and skeletons */
+  --card: #fffefc;
+  --line: #eae6de;
+  --line-2: #dbd5c9;
+  --ink: #16261c;
+  --ink-2: #435248;
+  --ink-3: #5f6b62; /* ≥ 4.5:1 on --paper */
+  --night: #0e1512; /* footer */
+
+  --danger: #b3261e;
+  --warn: #9a6405;
+  --ok: #1e7a45;
+  --info: #1d6386;
+
+  /*
+   * Corners and edges.
+   *
+   * One radius family, each step a little rounder than before: at 12 px a card corner reads as
+   * "a box with the corners taken off", at 14 it reads as a shape someone chose. The shadows are
+   * the other half — two layers, a hairline contact shadow that anchors the card to the page and
+   * a wide soft one that lifts it, instead of a single grey blur that makes everything look like
+   * it is floating in fog.
+   */
+  --r-sm: 10px;
+  --r: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-full: 999px;
+  --sh-1: 0 1px 1px rgba(20, 35, 26, 0.04), 0 2px 6px -3px rgba(20, 35, 26, 0.08);
+  --sh-2: 0 1px 2px rgba(20, 35, 26, 0.05), 0 10px 28px -16px rgba(20, 35, 26, 0.24);
+  --sh-3: 0 -10px 36px -10px rgba(13, 36, 25, 0.26);
+  --sh-gold: 0 0 0 1px rgba(203, 169, 84, 0.35), 0 8px 24px -12px rgba(107, 81, 23, 0.35);
+
+  --header-h: 60px;
+  --bottomnav-h: 0px;
+  --bagbar-h: 72px;
+  --maxw: 1280px;
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.65;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+  h1 {
+    font-size: 1.5rem;
+  }
+  h2 {
+    font-size: 1.25rem;
+  }
+  h3 {
+    font-size: 1.125rem;
+  }
+  a {
+    color: var(--em-700);
+  }
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--au-600);
+    outline-offset: 2px;
+    border-radius: var(--r-sm);
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  /*
+   * Instant on tap.
+   *
+   * Mobile browsers hold a tap for ~300 ms waiting to see whether it is the first half of a
+   * double-tap-to-zoom. On the phones these customers actually use that delay is the difference
+   * between a shop that feels quick and one that feels broken — people tap "कार्ट में डालें" a
+   * second time because nothing happened, and end up with two of everything. `manipulation` tells
+   * the browser there is no double-tap gesture to wait for, so the press lands immediately.
+   * Pinch-to-zoom on the page itself is untouched, which matters: plenty of people here zoom in
+   * to read a price.
+   */
+  :where(a, button, summary, [role='button'], input[type='submit'], label) {
+    touch-action: manipulation;
+  }
+  /*
+   * And something visible the instant a finger lands. A 60 ms squeeze is below the threshold where
+   * motion reads as animation; it reads as the button physically giving way. It costs nothing (the
+   * compositor handles transform on its own thread, so it cannot be delayed by the work the tap
+   * just started) and it is the cheapest "this site is responsive" signal there is.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    :where(button, [role='button'], .fb-press):active {
+      transform: scale(0.97);
+      transition: transform 60ms ease-out;
+    }
+  }
+  /* ⚠️ No horizontal scroll at 320px, ever. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+  ::selection {
+    background: var(--au-200);
+    color: var(--ink);
+  }
+}
+
+@layer components {
+  .fb-container {
+    width: 100%;
+    max-width: var(--maxw);
+    margin-inline: auto;
+    padding-inline: 14px;
+  }
+  @media (min-width: 768px) {
+    .fb-container {
+      padding-inline: 24px;
+    }
+  }
+  .fb-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-1);
+  }
+  .fb-display {
+    font-family: 'FB Display', 'Mukta', Georgia, serif;
+    font-weight: 400;
+    letter-spacing: 0.005em;
+  }
+  .fb-price {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .fb-tap {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  .fb-skeleton {
+    background: linear-gradient(90deg, var(--paper-2) 25%, #f4efe2 37%, var(--paper-2) 63%);
+    background-size: 400% 100%;
+    animation: fb-shimmer 1.2s ease-in-out infinite;
+    border-radius: var(--r-sm);
+  }
+  .fb-scroll-x {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
+  }
+  .fb-scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Header / hero band: one solid deep green, a single gold hairline under it. No pattern, no
+     gradient — on a cheap phone screen a flat colour stays clean where a texture turns to mush. */
+  .fb-band {
+    background: var(--band);
+    box-shadow: inset 0 -1px 0 rgba(226, 197, 120, 0.38);
+  }
+
+  /* ── Village strip ───────────────────────────────────────────────────────────
+     A thin band under the header. Its height is FIXED so the page never jumps while the
+     artwork loads, and the art sits behind a left-to-right scrim so the Hindi line stays
+     readable whatever photograph the shopkeeper puts there. */
+  .fb-strip {
+    position: relative;
+    height: 56px;
+    overflow: hidden;
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--line);
+    box-shadow: inset 0 1px 0 rgba(226, 197, 120, 0.5);
+  }
+  /* The picture is anchored to the RIGHT at a fixed width rather than stretched across the whole
+     strip. A strip is ~6:1 on a phone and ~20:1 on a desktop; one drawing cannot fill both without
+     being blown up into a blur at one end. A fixed panel keeps the scene at its own proportions on
+     every screen, and the paper colour simply runs out to meet it. */
+  .fb-strip-art {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 208px;
+    display: block;
+  }
+  /* The scrim softens the picture's left edge into the paper, so the words never sit on detail. */
+  .fb-strip::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: auto;
+    /* sits ON the picture's left edge, fading paper into the scene */
+    right: 128px;
+    width: 80px;
+    background: linear-gradient(90deg, var(--paper-2) 0%, rgba(239, 236, 228, 0) 100%);
+    z-index: 1;
+  }
+  .fb-strip-text {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+  }
+  .fb-strip-title {
+    font-family: 'FB Display', 'Mukta', Georgia, serif;
+    font-size: 14.5px;
+    line-height: 1.22;
+    color: var(--em-800);
+    max-width: 70%;
+    /* Two lines at most: the strip height is fixed, so a long line must clamp, not overflow. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  /* On a phone the strip has room for ONE thought. The second line returns on wider screens. */
+  .fb-strip-sub {
+    display: none;
+    font-size: 12px;
+    line-height: 1.2;
+    color: var(--ink-3);
+    max-width: 62%;
+  }
+  @media (min-width: 768px) {
+    .fb-strip {
+      height: 64px;
+    }
+    .fb-strip-sub {
+      display: block;
+    }
+    .fb-strip-title {
+      font-size: 18px;
+      -webkit-line-clamp: 1;
+      max-width: 70%;
+    }
+    .fb-strip-art {
+      width: 360px;
+    }
+    .fb-strip::after {
+      right: 240px;
+      width: 120px;
+    }
+    .fb-strip-sub {
+      font-size: 13px;
+    }
+  }
+
+  /* Breaker between category blocks: hairline — gold diamond — hairline. */
+  .fb-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--au-500);
+  }
+  .fb-divider::before,
+  .fb-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line-2) 20%, var(--line-2) 80%, transparent);
+  }
+
+  /* Designed label tile shown when a product has no real photo yet. */
+  .fb-tile {
+    position: relative;
+    display: grid;
+    place-items: center;
+    background: var(--tile-bg, var(--em-50));
+    color: var(--tile-fg, var(--em-800));
+    overflow: hidden;
+  }
+  .fb-tile::after {
+    content: '';
+    position: absolute;
+    inset: 7px;
+    border: 1px solid color-mix(in srgb, var(--tile-fg, var(--em-800)) 16%, transparent);
+    border-radius: 10px;
+    pointer-events: none;
+  }
+
+  /* Product card — as classes (not long utility strings) because a page can carry ~100 cards,
+     and every class string is sent twice (HTML + React payload). */
+  /*
+   * Three cards fit across a 390 px phone, so the body is built for a ~114 px column: the padding
+   * comes in, the type stays at a size a 45-year-old can read without leaning in (13 px name,
+   * 15 px price — the price is the one thing that must never shrink), and the gaps between the
+   * lines go to zero because at this width the lines are already close enough to read as a block.
+   */
+  .fb-pcard {
+    @apply flex h-full flex-col overflow-hidden rounded-[14px] border border-line bg-card shadow-1 transition-shadow duration-150 hover:shadow-2;
+    /*
+     * The half-pixel of depth that separates "a box" from "an object".
+     *
+     * A hairline of white along the top inside edge is how a real surface catches the light, and
+     * it is the whole trick behind a card looking raised rather than drawn. It is an inset
+     * box-shadow rather than a border, so it costs no layout and never shifts anything — which is
+     * the only kind of 3D worth having on a ₹6,000 Android phone.
+     */
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), var(--sh-1);
+  }
+  .fb-pcard:hover {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), var(--sh-2);
+  }
+  /*
+   * Rows the customer has not scrolled to yet are skipped entirely until they come near the
+   * viewport. On a home page of six category rows that is most of the layout work not done, which
+   * is felt as a faster first paint on exactly the phones that need it. The reserved height keeps
+   * the scrollbar honest so nothing jumps when a row does render.
+   */
+  .fb-defer {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 240px;
+  }
+  /* The staff "panel or shop?" cards, and anything else offering one big choice. */
+  .fb-choice {
+    @apply flex w-full items-center gap-3 rounded-[14px] border border-line bg-card px-4 py-3.5 text-left transition-shadow duration-150 hover:shadow-2;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), var(--sh-1);
+  }
+  .fb-choice-ico {
+    @apply grid h-11 w-11 shrink-0 place-items-center rounded-full bg-au-50 text-em-700 ring-1 ring-au-200;
+  }
+  .fb-pcard-body {
+    /* `relative` so the phone Buy control can straddle the picture's bottom edge from inside the
+       body — one element positioned by CSS rather than a second copy rendered just for phones. */
+    @apply relative flex flex-1 flex-col px-1 pb-1 pt-0.5 sm:px-2 sm:pb-1.5 sm:pt-1 lg:px-2 lg:pb-1.5 lg:pt-1;
+  }
+  .fb-pcard-name {
+    @apply line-clamp-2 text-[12px] font-semibold leading-tight text-ink no-underline hover:text-em-700 sm:text-[14px] sm:leading-snug lg:text-[13px] lg:leading-tight;
+    /* The name column must be allowed to shrink so the price beside it is never pushed off the
+       card — without this the flex item refuses to go below its longest word. */
+    overflow-wrap: anywhere;
+  }
+  .fb-off {
+    @apply absolute left-2 top-2 rounded-full bg-[linear-gradient(180deg,#efdba2,#cba954)] px-2 py-0.5 text-[11px] font-bold text-em-900 shadow-1;
+  }
+  .fb-rx {
+    @apply inline-flex items-center rounded-full bg-[#fdecea] px-2 py-0.5 text-[11px] font-semibold text-danger;
+  }
+  .fb-row-item {
+    @apply w-full shrink-0 md:w-auto;
+    scroll-snap-align: start;
+  }
+  /* The drawing on a grid tile, grown with the tile. A class rather than four utilities repeated
+     inline, because this string was being printed once per product on a page of a hundred. */
+  .fb-art-md {
+    @apply sm:h-[84px] sm:w-[84px] lg:h-[112px] lg:w-[112px];
+  }
+  .fb-tile-in {
+    @apply flex w-full flex-col items-center gap-0.5 px-1.5 text-center sm:gap-1 sm:px-4;
+  }
+  .fb-tile-name {
+    /* overflow-wrap so a single long Hindi word breaks inside the tile instead of running out of it */
+    @apply mt-0 line-clamp-2 max-w-full text-[13px] leading-tight sm:mt-0.5 sm:text-lg;
+    font-family: 'FB Display', 'Mukta', Georgia, serif;
+    overflow-wrap: anywhere;
+  }
+  .fb-tile-name-lg {
+    /* A long service name must wrap inside the tile, never run past its edge. */
+    @apply mt-2 line-clamp-3 max-w-full text-2xl sm:text-3xl;
+    overflow-wrap: anywhere;
+  }
+  .fb-tile-en {
+    /*
+     * No opacity here. The tile's background is a gradient that runs up to near-white at its
+     * highlight, so fading this line to 70 % dropped it under AA over the bright part for some of
+     * the tints — a caption you cannot read in the sun is not a caption. It stays secondary
+     * through size, caps and letter-spacing, which cost no contrast at all.
+     */
+    @apply line-clamp-1 max-w-full text-[10px] uppercase tracking-[0.14em];
+    overflow-wrap: anywhere;
+  }
+  .fb-tile-en-lg {
+    @apply text-sm;
+  }
+
+  .fb-prose :where(p, ul, ol) {
+    margin-block: 0.75rem;
+  }
+  .fb-prose :where(h2) {
+    margin-top: 1.75rem;
+    font-size: 1.3rem;
+    font-family: 'FB Display', 'Mukta', Georgia, serif;
+    font-weight: 400;
+  }
+  .fb-prose :where(h3) {
+    margin-top: 1.25rem;
+  }
+  .fb-prose :where(ul) {
+    list-style: disc;
+    padding-inline-start: 1.25rem;
+  }
+  .fb-prose :where(ol) {
+    list-style: decimal;
+    padding-inline-start: 1.25rem;
+  }
+  .fb-prose :where(a) {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .fb-prose :where(blockquote) {
+    border-left: 3px solid var(--au-400);
+    padding-left: 12px;
+    color: var(--ink-2);
+  }
+
+  /* Bottom sheet (mobile) / centred dialog (desktop). */
+  .fb-sheet {
+    animation: fb-rise 150ms ease-out;
+  }
+  .fb-backdrop {
+    animation: fb-fade 150ms ease-out;
+  }
+
+  /* Category rail: an ordinary scrollable row. Its slow drift is driven from CategoryRail.tsx by
+     moving scrollLeft, not by a transform, so a finger can take over at any moment. */
+  .fb-rail {
+    scroll-behavior: auto;
+  }
+}
+
+@keyframes fb-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+@keyframes fb-rise {
+  from {
+    transform: translateY(18px);
+    opacity: 0.6;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes fb-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Owner's brief: the categories drift slowly LEFT → RIGHT. */
+@keyframes fb-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(203, 169, 84, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(203, 169, 84, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Self-hosted fonts (SIL OFL — licences in /public/fonts).
+ * Body: Mukta (swap; only Devanagari 400 is preloaded).
+ * Headings: "FB Display" = Marcellus for Latin (the logo's face) + Tiro Devanagari Hindi for Hindi,
+ * stitched by unicode-range. `optional` → no swap flash and no layout shift: a slow first visit
+ * simply keeps Mukta; the next page has them cached.
+ */
+@font-face {
+  font-family: 'Mukta';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/mukta-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20B9, U+2190-21BB, U+2212;
+}
+@font-face {
+  font-family: 'Mukta';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/mukta-deva-400.woff2') format('woff2');
+  unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+25CC, U+A830-A839, U+A8E0-A8FF;
+}
+@font-face {
+  font-family: 'Mukta';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('/fonts/mukta-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20B9, U+2190-21BB, U+2212;
+}
+@font-face {
+  font-family: 'Mukta';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('/fonts/mukta-deva-600.woff2') format('woff2');
+  unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+25CC, U+A830-A839, U+A8E0-A8FF;
+}
+@font-face {
+  font-family: 'FB Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url('/fonts/marcellus-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20B9;
+}
+@font-face {
+  font-family: 'FB Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url('/fonts/tiro-deva-400.woff2') format('woff2');
+  unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+25CC, U+A830-A839, U+A8E0-A8FF;
+}
+
+/* Printing a bill: only the bill, no header/footer/bag bar. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .fb-print,
+  .fb-print * {
+    visibility: visible;
+  }
+  .fb-print {
+    position: absolute;
+    inset: 0 0 auto 0;
+    border: 0;
+    max-width: none;
+  }
+  .fb-noprint {
+    display: none !important;
+  }
+}
