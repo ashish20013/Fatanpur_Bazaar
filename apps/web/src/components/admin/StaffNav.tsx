@@ -58,7 +58,7 @@ export function StaffNav({ links, title, who }: { links: StaffLink[]; title: str
   const brand = (
     <div className="flex items-center gap-3 px-3">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/wordmark.svg" alt="Fatanpur Bazaar" width={90} height={34} className="h-[34px] w-auto" />
+      <img src="/brand/wordmark-white.svg" alt="Fatanpur Bazaar" width={90} height={34} className="h-[34px] w-auto" />
       <span className="rounded-full border border-au-400/50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-au-200">{title}</span>
     </div>
   );

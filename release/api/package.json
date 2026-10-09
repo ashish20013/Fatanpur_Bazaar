@@ -1,0 +1,39 @@
+{
+  "name": "fatanpur-api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node dist/main.js",
+    "migrate": "node dist/cli.js migrate",
+    "seed": "node dist/cli.js seed",
+    "seed:admin": "node dist/cli.js seed-admin",
+    "cron": "node dist/cli.js cron",
+    "doctor": "node dist/cli.js doctor"
+  },
+  "dependencies": {
+    "@fb/shared-types": "file:./vendor/shared-types",
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/platform-express": "^11.1.6",
+    "@nestjs/platform-socket.io": "^11.1.6",
+    "@nestjs/websockets": "^11.1.6",
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "helmet": "^8.1.0",
+    "knex": "^3.1.0",
+    "lru-cache": "^11.1.0",
+    "mysql2": "^3.14.3",
+    "qrcode": "^1.5.4",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "sharp": "^0.34.3",
+    "socket.io": "^4.8.1",
+    "web-push": "^3.6.7",
+    "zod": "^3.25.76"
+  }
+}

@@ -28,17 +28,24 @@ export default async function HomePage(): Promise<ReactNode> {
   const s = await getShell();
   const { lang, home, settings, cart, villages } = s;
   const t = dict(lang);
-  const cartMap = new Map((cart?.items ?? []).map((i) => [i.productId, { itemId: i.id, quantity: i.quantity }]));
-  const name = (x: { name: string; nameHi: string | null }): string => (lang === 'hi' ? (x.nameHi ?? x.name) : x.name);
+  const cartMap = new Map(
+    (cart?.items ?? []).map((i) => [i.productId, { itemId: i.id, quantity: i.quantity }]),
+  );
+  const name = (x: { name: string; nameHi: string | null }): string =>
+    lang === 'hi' ? (x.nameHi ?? x.name) : x.name;
 
   return (
     <>
-      <h1 className="sr-only">फतनपुर बाज़ार — रानीगंज, प्रतापगढ़ में किराना, फल-सब्ज़ी और ज़रूरी सामान की होम डिलीवरी</h1>
+      <h1 className="sr-only">
+        फतनपुर बाज़ार — रानीगंज, प्रतापगढ़ में किराना, फल-सब्ज़ी और ज़रूरी सामान की होम डिलीवरी
+      </h1>
 
       {/* The advertising strip, above the goods and below nothing else. It renders only when the
           owner has it switched on AND has uploaded at least one banner — otherwise there is no
           empty band where an advert would have been. */}
-      {settings.banner.enabled && home.banners.length ? <BannerStrip lang={lang} banners={home.banners} seconds={settings.banner.seconds} /> : null}
+      {settings.banner.enabled && home.banners.length ? (
+        <BannerStrip lang={lang} banners={home.banners} seconds={settings.banner.seconds} />
+      ) : null}
 
       {home.sections.length ? (
         home.sections.map((sec, i) => (
@@ -46,7 +53,11 @@ export default async function HomePage(): Promise<ReactNode> {
           // screen on both phone and desktop); sections further down lazy-load as the shopper scrolls.
           <div key={sec.category.id} className={i > 4 ? 'fb-defer' : undefined}>
             {i > 0 ? <Breaker /> : <div className="h-0.5 md:h-1 lg:h-1" />}
-            <section id={sec.category.slug} aria-labelledby={`h-${sec.category.slug}`} className="fb-container scroll-mt-40">
+            <section
+              id={sec.category.slug}
+              aria-labelledby={`h-${sec.category.slug}`}
+              className="fb-container scroll-mt-40"
+            >
               <SectionHead
                 slug={sec.category.slug}
                 icon={sec.category.icon}
@@ -58,7 +69,11 @@ export default async function HomePage(): Promise<ReactNode> {
               />
               {/* First 5 categories: server-rendered (one row each — light enough for 3G).
                   The rest lazy-load their row as the shopper scrolls to them. */}
-              {i < 5 ? <ProductGridHome items={sec.items} lang={lang} cartMap={cartMap} eager={i === 0} /> : <HomeCategoryGrid slug={sec.category.slug} lang={lang} />}
+              {i < 5 ? (
+                <ProductGridHome items={sec.items} lang={lang} cartMap={cartMap} eager={i === 0} />
+              ) : (
+                <HomeCategoryGrid slug={sec.category.slug} lang={lang} />
+              )}
             </section>
           </div>
         ))
@@ -81,7 +96,9 @@ export default async function HomePage(): Promise<ReactNode> {
             { icon: 'clock-hour-4', text: t.sections.how4 },
           ].map((step, n) => (
             <li key={step.icon} className="fb-card flex items-start gap-3 p-3 md:p-4">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-em-700 text-sm font-bold text-au-200">{n + 1}</span>
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-em-700 text-sm font-bold text-au-200">
+                {n + 1}
+              </span>
               <span className="flex-1 pt-1 text-body text-ink">{step.text}</span>
               <Icon name={step.icon} size={22} className="mt-1 shrink-0 text-au-600" />
             </li>
@@ -96,10 +113,17 @@ export default async function HomePage(): Promise<ReactNode> {
           <ul className="flex flex-wrap gap-2">
             {villages.map((v) => (
               <li key={v.id}>
-                <Link href={`/area/${v.slug}`} className="inline-flex h-10 items-center gap-1.5 rounded-full border border-line-2 bg-card px-3.5 text-base text-ink-2 no-underline hover:border-em-300 hover:text-em-800">
+                <Link
+                  href={`/area/${v.slug}`}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-full border border-line-2 bg-card px-3.5 text-base text-ink-2 no-underline hover:border-em-300 hover:text-em-800"
+                >
                   <Icon name="map-pin" size={15} className="text-au-600" />
                   {lang === 'hi' ? (v.nameHi ?? v.name) : v.name}
-                  {v.distanceKm !== null ? <span className="text-xs text-ink-3">· {v.distanceKm} {lang === 'hi' ? 'किमी' : 'km'}</span> : null}
+                  {v.distanceKm !== null ? (
+                    <span className="text-xs text-ink-3">
+                      · {v.distanceKm} {lang === 'hi' ? 'किमी' : 'km'}
+                    </span>
+                  ) : null}
                 </Link>
               </li>
             ))}
@@ -108,39 +132,15 @@ export default async function HomePage(): Promise<ReactNode> {
       ) : null}
 
       {/* Plain facts, written for people — not keyword stuffing. */}
-      <section className="fb-container mt-6 md:mt-8">
-        <div className="fb-card fb-prose p-5 text-body text-ink-2 sm:p-7">
-          <h2>फतनपुर बाज़ार से घर तक — कैसे काम करता है</h2>
-          <p>
-            फतनपुर बाज़ार रानीगंज तहसील (ज़िला प्रतापगढ़) का पुराना बाज़ार है। यहाँ की दुकान से हम आसपास के गाँवों में सामान पहुँचाते हैं — रोज़ का किराना, मंडी की
-            सब्ज़ी और फल, हलवाई की मिठाई, कपड़े, जूते-चप्पल, बिजली का सामान, खेती के औज़ार और बिल्डिंग मटेरियल। डॉक्टर से मिलने का समय, घर पर जाँच और भाड़े की
-            गाड़ी भी यहीं से बुक होती है।
-          </p>
-          {/* The shopkeeper dropped the minimum order and the delivery fee to zero. Printing
-              "कम से कम ऑर्डर ₹0" would read like a bug, so each clause only appears when there is
-              actually a number to state — and when there isn't, the better news is said plainly. */}
-          <p>
-            डिलीवरी आमतौर पर {settings.deliveryWindow} में होती है।{' '}
-            {Number(settings.minOrder) > 0 ? <>कम से कम ऑर्डर {rupees(settings.minOrder)} का है। </> : <>कम से कम ऑर्डर की कोई सीमा नहीं — एक पाव धनिया भी मँगा सकते हैं। </>}
-            {Number(settings.deliveryFee) > 0 ? (
-              <>
-                डिलीवरी शुल्क {rupees(settings.deliveryFee)}
-                {Number(settings.freeDeliveryAbove) > 0 ? <>, और {rupees(settings.freeDeliveryAbove)} से ऊपर मुफ़्त</> : null}।{' '}
-              </>
-            ) : (
-              <>डिलीवरी बिल्कुल मुफ़्त है। </>
-            )}
-            भुगतान सामान मिलने पर नकद या UPI से। दुकान रोज़ {settings.storeOpen} से {settings.storeClose} तक खुली रहती है।
-          </p>
-          {settings.supportPhone ? (
-            <p>
-              ऑनलाइन ऑर्डर करने में दिक्कत हो तो <a href={`tel:+91${settings.supportPhone}`}>+91 {settings.supportPhone}</a> पर फ़ोन कीजिए — फ़ोन पर भी ऑर्डर लिया जाता है।
-            </p>
-          ) : null}
-        </div>
-      </section>
 
-      <JsonLd data={itemListLd(home.sections.map((x) => ({ name: x.category.nameHi ?? x.category.name, path: `/${x.category.slug}` })))} />
+      <JsonLd
+        data={itemListLd(
+          home.sections.map((x) => ({
+            name: x.category.nameHi ?? x.category.name,
+            path: `/${x.category.slug}`,
+          })),
+        )}
+      />
     </>
   );
 }

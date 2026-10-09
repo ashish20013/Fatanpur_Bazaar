@@ -62,6 +62,17 @@ const nextConfig = {
     // Sab images upload pe hi resize ho chuki hain (A27) — request-time resize kabhi nahi.
     unoptimized: true,
   },
+  // Web app images process nahi karta (unoptimized: true) — sharp ki native binaries
+  // (33 MB) aur typescript (8.7 MB) standalone me fokat ka weight hai. Hatao.
+  // Key '**' zaroori hai — '/*' se Next.js ka 'next-server' trace match nahi hota
+  // aur packages exclude nahi hote (picomatch pattern matching).
+  outputFileTracingExcludes: {
+    '**': [
+      'node_modules/@img/**',
+      'node_modules/sharp/**',
+      'node_modules/typescript/**',
+    ],
+  },
   experimental: {
     // Sirf jo chahiye wahi bundle me aaye (First Load JS budget 110 KB).
     optimizePackageImports: ['@fb/shared-types'],
@@ -71,6 +82,11 @@ const nextConfig = {
       { source: '/:path*', headers: securityHeaders },
       // The sprite URL carries a content hash (?v=…), so browsers may keep it for a year.
       { source: '/icons/sprite.svg', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },
+      // Fonts kabhi change nahi hote — repeat visitors ke liye 350 KB download bachao.
+      { source: '/fonts/:path*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },
+      // Brand logos aur category art — 30 din cache (logo kabhi kabar badal sakta hai).
+      { source: '/brand/:path*', headers: [{ key: 'Cache-Control', value: 'public, max-age=2592000' }] },
+      { source: '/icons/art.svg', headers: [{ key: 'Cache-Control', value: 'public, max-age=2592000' }] },
     ];
   },
   async rewrites() {

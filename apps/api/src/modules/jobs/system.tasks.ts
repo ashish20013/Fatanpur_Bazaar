@@ -97,9 +97,14 @@ export class SystemTasks implements OnModuleInit {
   }
 
   /** Retention (DATABASE_AUDIT §6). audit_logs, wallet_transactions, orders are NEVER touched. */
+  private static readonly CLEANUP_TABLES = new Set([
+    'otp_requests', 'auth_sessions', 'rate_limits', 'order_idempotency',
+    'delivery_locations', 'search_logs', 'jobs', 'webhook_events', 'tracking_sessions',
+  ]);
   private async cleanup(): Promise<string> {
     const del = async (table: string, where: string): Promise<number> => {
-      const r = (await this.db.raw(`DELETE FROM ${table} WHERE ${where} LIMIT 20000`)) as [{ affectedRows: number }];
+      if (!SystemTasks.CLEANUP_TABLES.has(table)) throw new Error(`cleanup: table "${table}" not in allowlist`);
+      const r = (await this.db.raw(`DELETE FROM ?? WHERE ${where} LIMIT 20000`, [table])) as [{ affectedRows: number }];
       return r[0].affectedRows;
     };
     const out: Record<string, number> = {

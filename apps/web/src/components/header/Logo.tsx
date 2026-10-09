@@ -7,7 +7,7 @@ export function Logo({ label, height = 38 }: { label: string; height?: number })
   return (
     <Link href="/" aria-label={label} className="flex shrink-0 items-center rounded-sm py-0.5">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/wordmark.svg" alt={label} width={width} height={height} decoding="async" fetchPriority="high" className="block h-[26px] w-auto min-[380px]:h-[30px] lg:h-[40px]" />
+      <img src="/brand/wordmark-white.svg" alt={label} width={width} height={height} decoding="async" fetchPriority="high" className="block h-[26px] w-auto min-[380px]:h-[30px] lg:h-[40px]" />
     </Link>
   );
 }

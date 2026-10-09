@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { BagBar } from '@/components/BagBar';
-import { CallStrip } from '@/components/CallStrip';
+// import { CallStrip } from '@/components/CallStrip';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { JsonLd } from '@/components/JsonLd';
@@ -38,13 +38,16 @@ export default async function PublicLayout({ children }: { children: ReactNode }
       <main
         id="main"
         className="min-h-[60vh]"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px + var(--fb-strip-h, 0px) + var(--fb-bag-h, 0px))' }}
+        style={{
+          paddingBottom:
+            'calc(env(safe-area-inset-bottom) + 24px + var(--fb-strip-h, 0px) + var(--fb-bag-h, 0px))',
+        }}
       >
         {children}
       </main>
       <Footer lang={s.lang} credit={s.settings.credit} />
       <BagBar lang={s.lang} initial={s.cart} />
-      <CallStrip lang={s.lang} supportPhone={s.settings.supportPhone} playStoreUrl={s.settings.playStoreUrl} />
+      {/* <CallStrip lang={s.lang} supportPhone={s.settings.supportPhone} playStoreUrl={s.settings.playStoreUrl} /> */}
       <JsonLd
         data={[
           organizationLd(s.settings.supportPhone),

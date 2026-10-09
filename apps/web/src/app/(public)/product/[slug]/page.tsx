@@ -33,8 +33,19 @@ async function load(slug: string): Promise<ProductDetail | null> {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const p = await load(slug);
-  if (!p || p.itemType !== 'PRODUCT') return buildMetadata({ title: 'नहीं मिला', description: 'यह सामान नहीं मिला', path: `/product/${slug}`, noindex: true });
-  return buildMetadata({ title: p.seo.title, description: p.seo.description, path: `/product/${p.slug}`, image: imageUrl(p.image?.url, PUBLIC_API_URL) });
+  if (!p || p.itemType !== 'PRODUCT')
+    return buildMetadata({
+      title: 'नहीं मिला',
+      description: 'यह सामान नहीं मिला',
+      path: `/product/${slug}`,
+      noindex: true,
+    });
+  return buildMetadata({
+    title: p.seo.title,
+    description: p.seo.description,
+    path: `/product/${p.slug}`,
+    image: imageUrl(p.image?.url, PUBLIC_API_URL),
+  });
 }
 
 /** Product page: stays 200 when out of stock (A9) — "notify me" + alternatives instead of a 404. */
@@ -46,8 +57,11 @@ export default async function ProductPage({ params }: Params): Promise<ReactNode
   const { lang, cart, settings } = s;
   const t = dict(lang);
   const line = cart?.items.find((i) => i.productId === p.id);
-  const cartMap = new Map((cart?.items ?? []).map((i) => [i.productId, { itemId: i.id, quantity: i.quantity }]));
-  const nm = (x: { name: string; nameHi: string | null }): string => (lang === 'hi' ? (x.nameHi ?? x.name) : x.name);
+  const cartMap = new Map(
+    (cart?.items ?? []).map((i) => [i.productId, { itemId: i.id, quantity: i.quantity }]),
+  );
+  const nm = (x: { name: string; nameHi: string | null }): string =>
+    lang === 'hi' ? (x.nameHi ?? x.name) : x.name;
   const title = nm(p);
   const crumbs = [
     { name: t.nav.home, path: '/' },
@@ -59,30 +73,46 @@ export default async function ProductPage({ params }: Params): Promise<ReactNode
   return (
     <div className="fb-container pt-4">
       <Breadcrumbs items={crumbs} />
-      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-10">
+      <div className="grid gap-6 md:grid-cols-[2fr_3fr] md:gap-8">
         <div className="min-w-0 overflow-hidden rounded-[22px] border border-line bg-card shadow-1">
           <div className="aspect-square w-full">
-            <ProductVisual name={p.name} nameHi={p.nameHi} image={p.image?.url ?? null} icon={p.icon} family={p.family} lang={lang} size="lg" priority width={600} />
+            <ProductVisual
+              name={p.name}
+              nameHi={p.nameHi}
+              image={p.image?.url ?? null}
+              icon={p.icon}
+              family={p.family}
+              lang={lang}
+              size="lg"
+              priority
+              width={600}
+            />
           </div>
         </div>
 
         <div className="min-w-0 space-y-4">
           <div>
-            <h1 className="fb-display text-3xl leading-tight md:text-4xl">{title}</h1>
+            <h1 className="fb-display text-2xl leading-tight md:text-3xl">{title}</h1>
             <p className="mt-1 text-base text-ink-3">{lang === 'hi' ? p.name : (p.nameHi ?? '')}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Badge tone="muted">{p.unit}</Badge>
-              {p.inStock ? <Badge tone="ok">{lang === 'hi' ? 'उपलब्ध' : 'In stock'}</Badge> : <Badge tone="danger">{t.product.outOfStock}</Badge>}
+              {p.inStock ? (
+                <Badge tone="ok">{lang === 'hi' ? 'उपलब्ध' : 'In stock'}</Badge>
+              ) : (
+                <Badge tone="danger">{t.product.outOfStock}</Badge>
+              )}
               <Stars avg={p.rating.avg} count={p.rating.count} />
             </div>
           </div>
 
           <div className="flex items-baseline gap-3">
-            <span className="fb-price text-4xl">{rupees(p.price)}</span>
+            <span className="fb-price text-3xl">{rupees(p.price)}</span>
             {p.discountPercent > 0 ? (
               <>
                 <s className="text-lg text-ink-3">{rupees(p.mrp)}</s>
-                <span className="rounded-full bg-[linear-gradient(180deg,#efdba2,#cba954)] px-2.5 py-0.5 text-sm font-bold text-em-900">{t.product.off(p.discountPercent)}</span>
+                <span className="rounded-full bg-[linear-gradient(180deg,#efdba2,#cba954)] px-2.5 py-0.5 text-sm font-bold text-em-900">
+                  {t.product.off(p.discountPercent)}
+                </span>
               </>
             ) : null}
           </div>
@@ -93,17 +123,31 @@ export default async function ProductPage({ params }: Params): Promise<ReactNode
                 lang={lang}
                 size="md"
                 inCart={line ? { itemId: line.id, quantity: line.quantity } : undefined}
-                product={{ id: p.id, name: p.name, nameHi: p.nameHi, unit: p.unit, price: p.price, mrp: p.mrp, image: p.image?.urlSm ?? null, icon: p.icon, family: p.family, maxQty: p.maxQtyPerOrder }}
+                product={{
+                  id: p.id,
+                  name: p.name,
+                  nameHi: p.nameHi,
+                  unit: p.unit,
+                  price: p.price,
+                  mrp: p.mrp,
+                  image: p.image?.urlSm ?? null,
+                  icon: p.icon,
+                  family: p.family,
+                  maxQty: p.maxQtyPerOrder,
+                }}
               />
             ) : (
               <NotifyMe lang={lang} productId={p.id} />
             )}
-            {p.maxQtyPerOrder > 0 && p.maxQtyPerOrder < 100 ? <p className="mt-2 text-sm text-ink-3">{t.product.perOrderMax(p.maxQtyPerOrder)}</p> : null}
+            {p.maxQtyPerOrder > 0 && p.maxQtyPerOrder < 100 ? (
+              <p className="mt-2 text-sm text-ink-3">{t.product.perOrderMax(p.maxQtyPerOrder)}</p>
+            ) : null}
           </div>
 
           <ul className="grid gap-2 rounded-2xl border border-au-200 bg-au-50 p-4 text-base text-ink-2">
             <li className="flex items-center gap-2">
-              <Icon name="scooter" size={18} className="text-em-700" /> {t.header.deliveryIn(settings.deliveryWindow)}
+              <Icon name="scooter" size={18} className="text-em-700" />{' '}
+              {t.header.deliveryIn(settings.deliveryWindow)}
             </li>
             <li className="flex items-center gap-2">
               <Icon name="cash-banknote" size={18} className="text-em-700" /> {t.hero.p3}
@@ -115,7 +159,8 @@ export default async function ProductPage({ params }: Params): Promise<ReactNode
             ) : null}
             {p.supplier ? (
               <li className="flex items-center gap-2">
-                <Icon name="building-store" size={18} className="text-em-700" /> {t.product.from(p.supplier.name)}
+                <Icon name="building-store" size={18} className="text-em-700" />{' '}
+                {t.product.from(p.supplier.name)}
                 {p.supplier.village ? ` · ${p.supplier.village}` : ''}
               </li>
             ) : null}
@@ -137,11 +182,17 @@ export default async function ProductPage({ params }: Params): Promise<ReactNode
           {p.description ? (
             <section>
               <h2 className="mb-1 text-lg font-semibold">{t.product.description}</h2>
-              <div className="fb-prose text-body text-ink-2" dangerouslySetInnerHTML={{ __html: p.description }} />
+              <div
+                className="fb-prose text-body text-ink-2"
+                dangerouslySetInnerHTML={{ __html: p.description }}
+              />
             </section>
           ) : null}
           {p.root ? (
-            <Link href={`/${p.root.slug}`} className="inline-flex items-center gap-1 text-base font-semibold text-em-700 no-underline">
+            <Link
+              href={`/${p.root.slug}`}
+              className="inline-flex items-center gap-1 text-base font-semibold text-em-700 no-underline"
+            >
               {nm(p.root)} <Icon name="chevron-right" size={16} />
             </Link>
           ) : null}

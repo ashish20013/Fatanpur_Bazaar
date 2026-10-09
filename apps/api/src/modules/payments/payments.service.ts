@@ -309,7 +309,9 @@ export class PaymentsService implements OnModuleInit {
       await this.audit.log({ actorId: actor.id, actorRole: actor.role, action: 'payment.reject', entityType: 'payment', entityId: paymentId, before: { status: pay.status, utr: pay.upi_utr }, after: { action }, reason, ip }, trx);
       await this.state.changeStatusInTrx(trx, order.order_number, 'CANCELLED', { id: actor.id, kind: actor.role, permissions: actor.permissions, isGlobalAdmin: actor.isGlobalAdmin }, { note: `भुगतान नहीं मिला: ${reason}`, ip }, ac);
     });
-    for (const f of ac) f();
+    for (const fn of ac) {
+      try { await fn(); } catch (err) { Log.error('payment.after_commit_failed', { paymentId, err: String(err) }); }
+    }
     return { status: 'CANCELLED' };
   }
 

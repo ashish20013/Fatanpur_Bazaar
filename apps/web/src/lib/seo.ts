@@ -67,7 +67,7 @@ export function organizationLd(supportPhone: string): Json {
     name: BRAND.nameHi,
     alternateName: BRAND.nameEn,
     url: SITE_URL,
-    logo: `${SITE_URL}/icons/icon-512.png`,
+    logo: `${SITE_URL}/icons/icon-512.webp`,
     image: `${SITE_URL}/og.jpg`,
     contactPoint: [{ '@type': 'ContactPoint', telephone: `+91${supportPhone}`, contactType: 'customer service', areaServed: 'IN', availableLanguage: ['hi', 'en'] }],
   };
@@ -87,7 +87,7 @@ export function localBusinessLd(o: { supportPhone: string; openTime: string; clo
     alternateName: [BRAND.nameEn, 'Fatanpur Bazar', 'फतनपुर बाजार'],
     description: 'फतनपुर बाज़ार, रानीगंज (प्रतापगढ़) की ऑनलाइन दुकान — आसपास के गाँवों में किराना, फल-सब्ज़ी, मिठाई और ज़रूरी सामान की होम डिलीवरी।',
     url: SITE_URL,
-    logo: `${SITE_URL}/icons/icon-512.png`,
+    logo: `${SITE_URL}/icons/icon-512.webp`,
     image: `${SITE_URL}/og.jpg`,
     telephone: o.supportPhone ? `+91${o.supportPhone}` : undefined,
     priceRange: '₹',
@@ -196,6 +196,6 @@ export function blogPostingLd(p: { title: string; slug: string; excerpt: string 
     mainEntityOfPage: `${SITE_URL}/blog/${p.slug}`,
     image: p.coverUrl ?? undefined,
     author: { '@type': 'Organization', name: BRAND.nameHi },
-    publisher: { '@type': 'Organization', name: BRAND.nameHi, logo: { '@type': 'ImageObject', url: `${SITE_URL}/icons/icon-512.png` } },
+    publisher: { '@type': 'Organization', name: BRAND.nameHi, logo: { '@type': 'ImageObject', url: `${SITE_URL}/icons/icon-512.webp` } },
   };
 }

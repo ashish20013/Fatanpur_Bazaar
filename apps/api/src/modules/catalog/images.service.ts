@@ -72,18 +72,17 @@ export class ImagesService {
     }
     const url = (w: number): string => `${this.env.PUBLIC_UPLOAD_URL}/${rel}/${base}-${w}.webp`;
     const small = kind === 'banners' ? 640 : kind === 'categories' ? 320 : 200;
-    const large = kind === 'banners' ? 1280 : 1200;
-    return { url: url(600), urlSm: url(small), urlLg: url(large), width: w600.width, height: w600.height, files };
+    return { url: url(600), urlSm: url(small), urlLg: url(1280), width: w600.width, height: w600.height, files };
   }
 
   /** Delete the stored variants when a product image row is deleted (no orphan files). */
   async removeByUrl(url: string): Promise<void> {
     const prefix = `${this.env.PUBLIC_UPLOAD_URL}/`;
     if (!url.startsWith(prefix)) return;
-    const rel = url.slice(prefix.length).replace(/-(200|320|600|1200)\.webp$/, '');
+    const rel = url.slice(prefix.length).replace(/-(200|320|600|640|1200|1280)\.webp$/, '');
     if (rel.includes('..')) return;
     // Every width any `kind` can produce — a missing file is ignored below, so listing all is safe.
-    for (const w of [200, 320, 600, 1200]) {
+    for (const w of [200, 320, 600, 640, 1200, 1280]) {
       try {
         await unlink(join(this.env.STORAGE_PATH, 'uploads', `${rel}-${w}.webp`));
       } catch (e) {

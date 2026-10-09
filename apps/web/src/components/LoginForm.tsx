@@ -32,7 +32,11 @@ async function post<T>(action: string, body: Record<string, unknown>): Promise<T
     // a village 3G connection that just dropped. Say what happened, in his language.
     throw new Error('इंटरनेट नहीं चल रहा — नेटवर्क देखकर दोबारा कोशिश करें');
   }
-  const json = (await res.json().catch(() => null)) as { ok: boolean; data?: T; error?: { message: string } } | null;
+  const json = (await res.json().catch(() => null)) as {
+    ok: boolean;
+    data?: T;
+    error?: { message: string };
+  } | null;
   if (!res.ok || !json?.ok || !json.data) throw new Error(json?.error?.message ?? 'कुछ गड़बड़ हो गई');
   return json.data;
 }
@@ -97,7 +101,12 @@ export function LoginForm({ lang, next }: { lang: Lang; next?: string }): React.
     setBusy(true);
     setErr(null);
     try {
-      const r = await post<VerifyOut>('otp-verify', { phone, otp, name: name.trim() || undefined, referralCode: referral.trim() || undefined });
+      const r = await post<VerifyOut>('otp-verify', {
+        phone,
+        otp,
+        name: name.trim() || undefined,
+        referralCode: referral.trim() || undefined,
+      });
       // ⚠️ Redirect backend ke role se aata hai — client apna role tay nahi karta.
       // ⚠️ `next` is sanitised: only same-site paths (no //host, no scheme) — no open redirect.
       if (r.user.role === 'CUSTOMER') {
@@ -115,7 +124,8 @@ export function LoginForm({ lang, next }: { lang: Lang; next?: string }): React.
     }
   }
 
-  const field = 'h-12 w-full rounded border border-line-2 bg-card px-3 text-body outline-none transition-colors duration-150 focus:border-em-600';
+  const field =
+    'h-12 w-full rounded border border-line-2 bg-card px-3 text-body outline-none transition-colors duration-150 focus:border-em-600';
 
   function go(to: string): void {
     router.replace(to);
@@ -131,15 +141,21 @@ export function LoginForm({ lang, next }: { lang: Lang; next?: string }): React.
           <p className="mt-1 text-base text-ink-2">{t.auth.choose}</p>
         </div>
         <button type="button" onClick={() => go(choice.redirect)} className="fb-choice">
-          <span className="fb-choice-ico"><Icon name={isAdmin ? 'layout-dashboard' : 'clipboard-list'} size={20} /></span>
+          <span className="fb-choice-ico">
+            <Icon name={isAdmin ? 'layout-dashboard' : 'clipboard-list'} size={20} />
+          </span>
           <span className="min-w-0">
-            <span className="block text-body font-semibold text-ink">{isAdmin ? t.auth.goPanel : t.auth.goPanelStaff}</span>
+            <span className="block text-body font-semibold text-ink">
+              {isAdmin ? t.auth.goPanel : t.auth.goPanelStaff}
+            </span>
             <span className="block text-sm text-ink-3">{t.auth.goPanelHint}</span>
           </span>
           <Icon name="chevron-right" size={18} className="ml-auto shrink-0 text-ink-3" />
         </button>
         <button type="button" onClick={() => go(safeNext(next) ?? '/')} className="fb-choice">
-          <span className="fb-choice-ico"><Icon name="shopping-bag" size={20} /></span>
+          <span className="fb-choice-ico">
+            <Icon name="shopping-bag" size={20} />
+          </span>
           <span className="min-w-0">
             <span className="block text-body font-semibold text-ink">{t.auth.goShop}</span>
             <span className="block text-sm text-ink-3">{t.auth.goShopHint}</span>
@@ -170,7 +186,9 @@ export function LoginForm({ lang, next }: { lang: Lang; next?: string }): React.
             {t.auth.phone}
           </label>
           <div className="flex h-12 items-center overflow-hidden rounded border border-line-2 bg-card focus-within:border-em-600">
-            <span className="grid h-full place-items-center border-r border-line bg-paper-2 px-3 text-body font-semibold text-ink-2">+91</span>
+            <span className="grid h-full place-items-center border-r border-line bg-paper-2 px-3 text-body font-semibold text-ink-2">
+              +91
+            </span>
             <input
               id="fb-phone-login"
               inputMode="numeric"
@@ -196,7 +214,15 @@ export function LoginForm({ lang, next }: { lang: Lang; next?: string }): React.
         >
           <p className="flex flex-wrap items-center gap-2 text-base text-ink-2">
             {t.auth.otpSent(`+91 ${phone}`)}
-            <button type="button" onClick={() => { setStep('phone'); setOtp(''); setErr(null); }} className="font-semibold text-em-700 underline underline-offset-2">
+            <button
+              type="button"
+              onClick={() => {
+                setStep('phone');
+                setOtp('');
+                setErr(null);
+              }}
+              className="font-semibold text-em-700 underline underline-offset-2"
+            >
               {t.auth.changeNumber}
             </button>
           </p>
@@ -219,25 +245,46 @@ export function LoginForm({ lang, next }: { lang: Lang; next?: string }): React.
               <Icon name="user-plus" size={16} className="mr-1 inline" /> {t.auth.firstTime}
             </summary>
             <div className="mt-2 space-y-2">
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.auth.name} aria-label={t.auth.name} autoComplete="name" className={field} />
-              <input value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase())} placeholder={t.auth.referral} aria-label={t.auth.referral} className={field} />
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t.auth.name}
+                aria-label={t.auth.name}
+                autoComplete="name"
+                className={field}
+              />
+              <input
+                value={referral}
+                onChange={(e) => setReferral(e.target.value.toUpperCase())}
+                placeholder={t.auth.referral}
+                aria-label={t.auth.referral}
+                className={field}
+              />
             </div>
           </details>
           <button type="submit" disabled={busy} className={buttonClass('primary', 'lg', true)}>
             {t.auth.verify} <Icon name="arrow-right" size={18} />
           </button>
-          <button type="button" disabled={cooldown > 0 || busy} onClick={() => void send()} className={buttonClass('ghost', 'sm', true)}>
+          <button
+            type="button"
+            disabled={cooldown > 0 || busy}
+            onClick={() => void send()}
+            className={buttonClass('ghost', 'sm', true)}
+          >
             {cooldown > 0 ? t.auth.resendIn(cooldown) : t.auth.resend}
           </button>
         </form>
       )}
 
       {err ? (
-        <p role="alert" className="rounded border border-[#f3c9c4] bg-[#fdf0ee] px-3 py-2 text-base font-semibold text-danger">
+        <p
+          role="alert"
+          className="rounded border border-[#f3c9c4] bg-[#fdf0ee] px-3 py-2 text-base font-semibold text-danger"
+        >
           {err}
         </p>
       ) : null}
-      <p className="text-sm text-ink-3">{t.auth.terms}</p>
+      {/* <p className="text-sm text-ink-3">{t.auth.terms}</p> */}
     </div>
   );
 }

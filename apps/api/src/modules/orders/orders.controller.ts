@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { z } from 'zod';
 import type { OrderStatus } from '@fb/shared-types';
-import { CurrentUser, Owns, RequirePermission, Resource, Roles } from '../../common/decorators';
+import { CurrentUser, Owns, RateLimit, RequirePermission, Resource, Roles } from '../../common/decorators';
 import { ZodPipe } from '../../common/pipes/zod.pipe';
 import { AppError } from '../../common/errors';
 import { PagedResult } from '../../common/interceptors/transform.interceptor';
@@ -52,6 +52,7 @@ export class OrdersController {
 
   @Post('quote')
   @HttpCode(200)
+  @RateLimit({ bucket: 'quote', by: 'user', limit: 30, windowSec: 300 })
   async quote(@CurrentUser() u: AuthUser, @Body(new ZodPipe(QuoteSchema)) b: z.infer<typeof QuoteSchema>): Promise<unknown> {
     return this.quotes.toResponse(await this.quotes.build(u.id, b));
   }

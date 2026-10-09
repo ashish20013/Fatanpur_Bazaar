@@ -193,7 +193,9 @@ export class DeliveryService implements OnModuleInit {
       });
       return { assignmentId, riderId, orderNumber };
     });
-    for (const f of afterCommit) f();
+    for (const fn of afterCommit) {
+      try { await fn(); } catch (err) { Log.error('delivery.after_commit_failed', { orderNumber: result.orderNumber, err: String(err) }); }
+    }
     return result;
   }
 
@@ -274,7 +276,9 @@ export class DeliveryService implements OnModuleInit {
       });
       return { assignmentId, orderNumber, status: 'ACCEPTED' };
     })) as { assignmentId: number; orderNumber: string; status: string };
-    for (const f of afterCommit) f();
+    for (const fn of afterCommit) {
+      try { await fn(); } catch (err) { Log.error('delivery.after_commit_failed', { orderNumber: result.orderNumber, err: String(err) }); }
+    }
     this.tracking.invalidateAssignment(result.assignmentId, rider.id);
     return result;
   }

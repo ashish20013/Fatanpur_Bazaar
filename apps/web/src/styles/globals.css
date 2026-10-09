@@ -122,7 +122,7 @@
     color: var(--em-700);
   }
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-    outline: 2px solid var(--au-600);
+    outline: 2px solid var(--g-600);
     outline-offset: 2px;
     border-radius: var(--r-sm);
   }

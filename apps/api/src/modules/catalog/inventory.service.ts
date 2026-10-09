@@ -26,7 +26,7 @@ export class InventoryService {
       }
       const stock = Number(row.stock_qty);
       if (stock < l.quantity) throw new AppError('STOCK_INSUFFICIENT', { item: l.label, n: Math.max(0, stock) });
-      await trx('products').where({ id: l.productId }).update({ stock_qty: trx.raw('stock_qty - ?', [l.quantity]), sold_count: trx.raw('sold_count + ?', [l.quantity]) });
+      await trx('products').where({ id: l.productId }).update({ stock_qty: trx.raw('stock_qty - LEAST(stock_qty, ?)', [l.quantity]), sold_count: trx.raw('sold_count + ?', [l.quantity]) });
       await trx('inventory_logs').insert({ product_id: l.productId, change_qty: -l.quantity, qty_after: stock - l.quantity, reason: 'ORDER', reference: orderNumber, actor_id: actorId });
     }
   }
