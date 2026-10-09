@@ -6,7 +6,7 @@ on:
   pull_request:
   workflow_dispatch:
 
-# ⚠️ Never run two builds at once (HOSTING_CAPACITY §5 B1) — and never build on the server.
+# Never run two builds at once (HOSTING_CAPACITY) — and never build on the server.
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
@@ -51,7 +51,7 @@ jobs:
       - run: npm run build --workspace=apps/api
 
   web:
-    needs: api                 # ⚠️ serial — never two builds in parallel
+    needs: api                 # serial — never two builds in parallel
     runs-on: ubuntu-latest
     env:
       NEXT_TELEMETRY_DISABLED: 1
@@ -60,7 +60,7 @@ jobs:
       NEXT_PUBLIC_API_URL: https://api.fatanpurbazaar.com
       NEXT_PUBLIC_SOCKET_URL: https://api.fatanpurbazaar.com
       API_INTERNAL_URL: http://127.0.0.1:3000
-      NEXT_BUILD_OFFLINE: '1'   # build without a live API: pages render from ISR on first request
+      NEXT_BUILD_OFFLINE: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -68,9 +68,6 @@ jobs:
       - run: npm ci
       - run: npm run build:types
       - run: npm run lint --workspace=apps/web
-      # Builds API then web (one after the other) and packs both exactly as the server wants them:
-      # release/api (shared-types vendored, `npm install` works there) and release/web (flat
-      # standalone, entry server.js, nothing to install). Same script the owner runs by hand.
       - run: node scripts/make-release.mjs
       - uses: actions/upload-artifact@v4
         with: { name: api-release, path: release/api, retention-days: 7, include-hidden-files: true }
@@ -87,25 +84,103 @@ jobs:
         with: { name: api-release, path: api-dist }
       - uses: actions/download-artifact@v4
         with: { name: web-release, path: web-standalone }
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p ${{ secrets.SSH_PORT || 65002 }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-      - name: Deploy API (keep previous release for rollback)
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p ${{ secrets.SSH_PORT || 65002 }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy API
+        env:
+          R: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+          P: -p ${{ secrets.SSH_PORT || 65002 }}
+          DOMAIN: api.fatanpurbazaar.com
         run: |
-          R="${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"; P="-p ${{ secrets.SSH_PORT || 65002 }}"
-          ssh $P $R "cd ~/domains/api.fatanpurbazaar.com && rm -rf public_html.prev && cp -a public_html public_html.prev || true"
-          rsync -az --delete --exclude tmp --exclude .env --exclude storage --exclude node_modules -e "ssh $P" api-dist/ $R:~/domains/api.fatanpurbazaar.com/public_html/
-          ssh $P $R "cd ~/domains/api.fatanpurbazaar.com/public_html && npm install --omit=dev --no-audit --no-fund && node dist/cli.js migrate && mkdir -p tmp && touch tmp/restart.txt"
+          BASE="~/domains/$DOMAIN/hbuilds"
+          VER="deploy-$(date +%Y%m%d-%H%M%S)"
+
+          # 1. Create new version directory
+          ssh $P $R "mkdir -p $BASE/versions/$VER/nodejs/tmp"
+
+          # 2. Upload release files
+          rsync -az --delete --exclude tmp -e "ssh $P" api-dist/ "$R:$BASE/versions/$VER/nodejs/"
+
+          # 3. Setup .env symlink + storage symlink + npm install + migrate
+          ssh $P $R "
+            export PATH=/opt/alt/alt-nodejs24/root/usr/bin:\$PATH
+            cd $BASE/versions/$VER/nodejs
+            ln -sf $BASE/config/.env .env
+            ln -sf ~/storage/fatanpur storage
+            mkdir -p tmp
+            npm install --omit=dev --no-audit --no-fund 2>&1 | tail -5
+            node dist/cli.js migrate
+          "
+
+          # 4. Atomic symlink swap (current -> new version)
+          ssh $P $R "ln -sfn $BASE/versions/$VER $BASE/current"
+
+          # 5. Update .htaccess startup file to match flat release structure
+          ssh $P $R "
+            H=~/domains/$DOMAIN/public_html/.htaccess
+            grep -q 'PassengerStartupFile dist/main.js' \$H 2>/dev/null ||
+            sed -i 's|PassengerStartupFile .*|PassengerStartupFile dist/main.js|' \$H
+          "
+
+          # 6. Restart Passenger
+          ssh $P $R "touch $BASE/current/nodejs/tmp/restart.txt"
+
+          # 7. Cleanup old versions (keep last 3)
+          ssh $P $R "cd $BASE/versions && ls -1t | tail -n +4 | xargs rm -rf 2>/dev/null || true"
+
       - name: Deploy Web
+        env:
+          R: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+          P: -p ${{ secrets.SSH_PORT || 65002 }}
+          DOMAIN: fatanpurbazaar.com
         run: |
-          R="${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"; P="-p ${{ secrets.SSH_PORT || 65002 }}"
-          ssh $P $R "cd ~/domains/fatanpurbazaar.com && rm -rf public_html.prev && cp -a public_html public_html.prev || true"
-          rsync -az --delete --exclude tmp --exclude .env --exclude .env.local -e "ssh $P" web-standalone/ $R:~/domains/fatanpurbazaar.com/public_html/
-          ssh $P $R "mkdir -p ~/domains/fatanpurbazaar.com/public_html/tmp && touch ~/domains/fatanpurbazaar.com/public_html/tmp/restart.txt"
+          BASE="~/domains/$DOMAIN/hbuilds"
+          VER="deploy-$(date +%Y%m%d-%H%M%S)"
+
+          # 1. Create new version directory
+          ssh $P $R "mkdir -p $BASE/versions/$VER/nodejs/tmp"
+
+          # 2. Upload release files (web includes node_modules — no install needed)
+          rsync -az --delete --exclude tmp -e "ssh $P" web-standalone/ "$R:$BASE/versions/$VER/nodejs/"
+
+          # 3. Setup .env symlink
+          ssh $P $R "
+            cd $BASE/versions/$VER/nodejs
+            ln -sf $BASE/config/.env .env
+            mkdir -p tmp
+          "
+
+          # 4. Atomic symlink swap
+          ssh $P $R "ln -sfn $BASE/versions/$VER $BASE/current"
+
+          # 5. Update .htaccess startup file to match flat release structure
+          ssh $P $R "
+            H=~/domains/$DOMAIN/public_html/.htaccess
+            grep -q 'PassengerStartupFile server.js' \$H 2>/dev/null ||
+            sed -i 's|PassengerStartupFile .*|PassengerStartupFile server.js|' \$H
+          "
+
+          # 6. Restart Passenger
+          ssh $P $R "touch $BASE/current/nodejs/tmp/restart.txt"
+
+          # 7. Cleanup old versions (keep last 3)
+          ssh $P $R "cd $BASE/versions && ls -1t | tail -n +4 | xargs rm -rf 2>/dev/null || true"
+
       - name: Smoke check
+        env:
+          R: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+          P: -p ${{ secrets.SSH_PORT || 65002 }}
         run: |
-          sleep 10
-          curl -fsS https://api.fatanpurbazaar.com/v1/health
+          sleep 12
+          # Hit the API via the server itself (triggers Passenger spawn)
+          ssh $P $R "curl -fsS http://localhost:3000/v1/catalog/home > /dev/null 2>&1 || true"
+          sleep 5
+          curl -fsS https://api.fatanpurbazaar.com/v1/catalog/home | head -c 100
+          echo ""
           curl -fsSI https://fatanpurbazaar.com | head -1
