@@ -31,7 +31,7 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }): Promise<ReactNode> {
-  const [lang, me, settings, sp] = await Promise.all([currentLang(), getMe(), getSettings(), searchParams]);
+  const [lang, me, , sp] = await Promise.all([currentLang(), getMe(), getSettings(), searchParams]);
   const t = dict(lang);
   const next = safeNext(sp.next);
   // Already logged in → straight to their own home (role comes from the backend).

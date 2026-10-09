@@ -8,7 +8,7 @@ import { HomeCategoryGrid } from '@/components/HomeCategoryGrid';
 import { Breaker, SectionHead } from '@/components/SectionHead';
 import { EmptyState } from '@/components/ui';
 import { JsonLd } from '@/components/JsonLd';
-import { rupees } from '@/lib/format';
+
 import { dict } from '@/lib/i18n';
 import { buildMetadata, itemListLd } from '@/lib/seo';
 import { getShell } from '@/lib/shell';
