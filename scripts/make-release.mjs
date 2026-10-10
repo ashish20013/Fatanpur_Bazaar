@@ -72,6 +72,11 @@ writeFileSync(
 );
 cpSync(join(root, 'apps/api/.env.example'), join(api, '.env.example'));
 
+// Seed storage files (category photos) — the deploy copies them into the shared storage
+// directory so that seeded DB paths resolve to real files on disk.
+const seedCat = join(root, 'apps/api/storage/uploads/categories/seed');
+if (existsSync(seedCat)) cpSync(seedCat, join(api, 'storage-seed/uploads/categories/seed'), { recursive: true });
+
 // ───────────────────────────── WEB ─────────────────────────────
 // Next's standalone output keeps the monorepo shape (apps/web/server.js + node_modules at the top).
 // Flattened here so the entry is simply server.js, with the traced node_modules beside it.

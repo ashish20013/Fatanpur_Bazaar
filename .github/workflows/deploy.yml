@@ -118,6 +118,33 @@ jobs:
             node dist/cli.js migrate
           "
 
+          # 3b. Deploy seed images + fix STORAGE_PATH + run seed
+          ssh $P $R "
+            export PATH=/opt/alt/alt-nodejs24/root/usr/bin:\$PATH
+            cd $BASE/versions/$VER/nodejs
+            SHARED=\$HOME/storage/fatanpur
+
+            # Ensure shared storage directories exist
+            mkdir -p \$SHARED/uploads/categories/seed \$SHARED/uploads/banners \$SHARED/uploads/products
+
+            # Copy seed category images from release to shared storage (never overwrite existing)
+            if [ -d storage-seed/uploads ]; then
+              cp -rn storage-seed/uploads/* \$SHARED/uploads/ 2>/dev/null || true
+            fi
+
+            # One-time migration: if old absolute-path storage has files, copy them across
+            OLD=\$HOME/domains/$DOMAIN/hbuilds/storage/uploads
+            if [ -d \"\$OLD\" ] && [ ! -L \"\$OLD\" ]; then
+              cp -rn \$OLD/* \$SHARED/uploads/ 2>/dev/null || true
+            fi
+
+            # Fix STORAGE_PATH to use the symlink (relative to app root)
+            sed -i \"s|^STORAGE_PATH=.*|STORAGE_PATH=./storage|\" $BASE/config/.env
+
+            # Run seed (idempotent: fills missing data, never overwrites admin changes)
+            node dist/cli.js seed 2>&1 | tail -20
+          "
+
           # 4. Atomic symlink swap (current -> new version)
           ssh $P $R "ln -sfn $BASE/versions/$VER $BASE/current"
 
