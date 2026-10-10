@@ -175,7 +175,7 @@ function CategoryThumb({ c }: { c: CategoryRow }): React.ReactNode {
   const src = imageUrl(c.image_url_sm ?? c.image_url, PUBLIC_API_URL);
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-line" />;
+    return <img src={src} alt={c.name_hi ?? c.name} width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-line" />;
   }
   return (
     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-paper-2 ring-1 ring-line">

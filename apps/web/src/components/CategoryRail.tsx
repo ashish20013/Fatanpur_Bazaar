@@ -127,7 +127,7 @@ export function CategoryRail({ lang, roots, active: activeProp, supportPhone }: 
         >
           {photo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photo} alt="" width={320} height={320} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            <img src={photo} alt={name(c)} width={320} height={320} loading="lazy" decoding="async" className="h-full w-full object-cover" />
           ) : (
             <span className="grid h-full w-full place-items-center">
               <ColourArt name={`cat-${c.slug}`} fallback={c.icon ?? 'basket'} size={36} className="sm:h-[40px] sm:w-[40px] lg:h-[30px] lg:w-[30px]" />

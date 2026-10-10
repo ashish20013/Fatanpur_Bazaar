@@ -22,7 +22,7 @@ export function SectionHead({ slug, icon, image, title, sub, href, more, as = 'h
         >
           {photo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photo} alt="" width={96} height={96} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            <img src={photo} alt={title} width={96} height={96} loading="lazy" decoding="async" className="h-full w-full object-cover" />
           ) : (
             <ColourArt name={`cat-${slug}`} fallback={icon ?? 'basket'} size={28} className="md:h-8 md:w-8" />
           )}

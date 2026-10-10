@@ -59,7 +59,10 @@ jobs:
       NEXT_PUBLIC_SITE_URL: https://fatanpurbazaar.com
       NEXT_PUBLIC_API_URL: https://api.fatanpurbazaar.com
       NEXT_PUBLIC_SOCKET_URL: https://api.fatanpurbazaar.com
-      API_INTERNAL_URL: http://127.0.0.1:3000
+      # Hostinger shared hosting: Passenger assigns a dynamic port to each Node.js app.
+      # The API is NOT on localhost:3000 — so rewrites (baked at build) must use the public URL.
+      # This adds a TLS hop for /uploads and /socket proxying, but it is the only reliable path.
+      API_INTERNAL_URL: https://api.fatanpurbazaar.com
       NEXT_BUILD_OFFLINE: '1'
     steps:
       - uses: actions/checkout@v4

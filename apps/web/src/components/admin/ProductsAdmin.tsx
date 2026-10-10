@@ -98,7 +98,7 @@ export function ProductsAdmin({ lang, rows, meta, search }: { lang: Lang; rows: 
                       <span className="flex items-center gap-2">
                         {img ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={img} alt="" width={36} height={36} loading="lazy" className="h-9 w-9 rounded object-cover" />
+                          <img src={img} alt={p.nameHi ?? p.name} width={36} height={36} loading="lazy" className="h-9 w-9 rounded object-cover" />
                         ) : null}
                         <span>
                           <Link href={`/admin/products/${p.id}`} className="block font-semibold text-ink no-underline hover:text-em-700 hover:underline">

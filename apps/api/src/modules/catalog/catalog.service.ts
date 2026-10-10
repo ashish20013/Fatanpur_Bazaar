@@ -339,7 +339,9 @@ export class CatalogService {
         'pc.name as parent_name', 'pc.name_hi as parent_name_hi', 'pc.slug as parent_slug', 'pc.is_active as parent_active',
       );
     if (!c || !(await this.compliance.isEnabled(c.vertical))) throw notFound();
-    if (c.parent_slug && !Number(c.parent_active)) throw notFound();
+    // When a parent exists but is deactivated, treat the child as a root category
+    // (matches categoryTree() which promotes orphaned children to root level).
+    const parentActive = c.parent_slug ? !!Number(c.parent_active) : false;
     const verticals = await this.compliance.sqlVerticals();
     const children = (await this.db('categories').where({ parent_id: c.id, is_active: 1 }).whereIn('vertical', verticals)
       .orderBy('sort_order').orderBy('id').select('id', 'name', 'name_hi as nameHi', 'slug', 'icon')) as { id: number; name: string; nameHi: string | null; slug: string; icon: string | null }[];
@@ -354,7 +356,7 @@ export class CatalogService {
       seoTitle: c.seo_title,
       seoDescription: c.seo_description,
       introHtml: c.intro_html,
-      parent: c.parent_slug ? { name: c.parent_name, nameHi: c.parent_name_hi ?? null, slug: c.parent_slug } : null,
+      parent: c.parent_slug && parentActive ? { name: c.parent_name, nameHi: c.parent_name_hi ?? null, slug: c.parent_slug } : null,
       children,
     };
   }
