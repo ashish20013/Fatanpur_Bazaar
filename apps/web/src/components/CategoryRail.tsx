@@ -40,6 +40,8 @@ export function CategoryRail({ lang, roots, active: activeProp, supportPhone }: 
   const [drift, setDrift] = useState(false);
   const [paused, setPaused] = useState(false);
   const [soon, setSoon] = useState<RootCategory | null>(null);
+  // Track category IDs whose images failed to load — swap to the ColourArt icon fallback.
+  const [failedImgs, setFailedImgs] = useState<Set<number>>(() => new Set());
   const box = useRef<HTMLDivElement>(null);
   // Read inside the animation frame so pausing does not tear down and restart the loop.
   const pausedRef = useRef(false);
@@ -102,7 +104,7 @@ export function CategoryRail({ lang, roots, active: activeProp, supportPhone }: 
   const item = (c: RootCategory, dup: boolean): React.ReactNode => {
     const tone = toneFor(c.slug);
     const isActive = active === c.slug;
-    const photo = imageUrl(c.image, PUBLIC_API_URL);
+    const photo = failedImgs.has(c.id) ? null : imageUrl(c.image, PUBLIC_API_URL);
     /*
      * A shop front, not a symbol.
      *
@@ -127,7 +129,7 @@ export function CategoryRail({ lang, roots, active: activeProp, supportPhone }: 
         >
           {photo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photo} alt={name(c)} width={320} height={320} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            <img src={photo} alt={name(c)} width={320} height={320} loading="lazy" decoding="async" className="h-full w-full object-cover" onError={() => setFailedImgs((s) => new Set(s).add(c.id))} />
           ) : (
             <span className="grid h-full w-full place-items-center">
               <ColourArt name={`cat-${c.slug}`} fallback={c.icon ?? 'basket'} size={36} className="sm:h-[40px] sm:w-[40px] lg:h-[30px] lg:w-[30px]" />

@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react';
+'use client';
+
+import { useState, type ReactNode } from 'react';
 import { PUBLIC_API_URL } from '@/lib/env';
 import { imageUrl } from '@/lib/format';
 import { tileLook } from '@/lib/tones';
@@ -10,6 +12,10 @@ import { ColourArt } from './icons';
  * because every drawing is one <use> into the shared sprite. We never fake a photo: the drawing is
  * plainly a drawing, carries no brand or packaging, and disappears the moment a real photo is
  * uploaded for that product.
+ *
+ * If the image file is missing on disk (404), corrupted, or the network fails, the `onError`
+ * handler flips to the label tile automatically — the customer never sees a broken-image icon
+ * or raw alt-text.
  */
 export function ProductVisual({
   name,
@@ -32,9 +38,10 @@ export function ProductVisual({
   priority?: boolean;
   width?: number;
 }): ReactNode {
+  const [imgFailed, setImgFailed] = useState(false);
   const src = imageUrl(image, PUBLIC_API_URL);
   const title = lang === 'hi' ? (nameHi ?? name) : name;
-  if (src) {
+  if (src && !imgFailed) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -45,6 +52,7 @@ export function ProductVisual({
         loading={priority ? 'eager' : 'lazy'}
         decoding={priority ? 'sync' : 'async'}
         fetchPriority={priority ? 'high' : 'auto'}
+        onError={() => setImgFailed(true)}
         className="aspect-square h-full w-full bg-paper-2 object-cover"
       />
     );

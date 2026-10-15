@@ -41,6 +41,8 @@ export function BannerStrip({ lang, banners, seconds }: { lang: Lang; banners: H
   const t = dict(lang);
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
+  // Track banner IDs whose images failed to load — hide the broken slide entirely.
+  const [failedBanners, setFailedBanners] = useState<Set<number>>(() => new Set());
   // Read inside the timer so pausing does not tear the interval down and start it over, which
   // would hand whoever touched the strip a fresh full-length hold on the slide they are reading.
   const pausedRef = useRef(false);
@@ -63,9 +65,9 @@ export function BannerStrip({ lang, banners, seconds }: { lang: Lang; banners: H
 
   const slide = (b: HomeBanner, idx: number): React.ReactNode => {
     // `imageUrl` returns null for an empty path; a slide with no picture is simply not drawn
-    // rather than rendered as a broken-image box.
+    // rather than rendered as a broken-image box. Same for images that failed to load.
     const src = imageUrl(b.imageUrlSm ?? b.imageUrl, PUBLIC_API_URL);
-    if (!src) return null;
+    if (!src || failedBanners.has(b.id)) return null;
     const img = (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -78,6 +80,7 @@ export function BannerStrip({ lang, banners, seconds }: { lang: Lang; banners: H
         loading={idx === 0 ? 'eager' : 'lazy'}
         decoding="async"
         fetchPriority={idx === 0 ? 'high' : 'auto'}
+        onError={() => setFailedBanners((s) => new Set(s).add(b.id))}
         className="h-full w-full object-cover"
       />
     );
