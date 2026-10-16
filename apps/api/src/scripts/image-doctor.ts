@@ -52,7 +52,7 @@ async function run(): Promise<void> {
   let checked = 0;
 
   // 1. Product images
-  const productImages = await db('product_images').select('id', 'product_id', 'url', 'url_sm', 'url_lg');
+  const productImages = await db('product_images').select('id', 'product_id', 'url', 'url_sm');
   for (const img of productImages) {
     checked++;
     const mainPath = urlToPath(img.url);
