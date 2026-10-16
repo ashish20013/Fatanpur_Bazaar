@@ -62,7 +62,7 @@ export function SafeImg({
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       {...props}
       ref={ref}
