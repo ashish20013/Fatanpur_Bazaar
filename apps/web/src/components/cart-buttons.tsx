@@ -74,13 +74,28 @@ export function BuyButton({
     // and the product page says why it cannot be bought. Responsive keeps the words from `sm` up.
     if (compact) return null;
     return (
-      <button type="button" disabled className={`${buttonClass('secondary', size === 'md' ? 'md' : 'sm', true)} !text-ink-3 ${tight ? TIGHT : ''}`}>
+      <button
+        type="button"
+        disabled
+        className={`${buttonClass('secondary', size === 'md' ? 'md' : 'sm', true)} !text-ink-3 ${tight ? TIGHT : ''}`}
+      >
         {t.product.outOfStock}
       </button>
     );
   }
   if (line && line.quantity > 0) {
-    return <QtyStepper lang={lang} productId={product.id} itemId={line.itemId} quantity={line.quantity} max={product.maxQty} size={size} compact={compact} tight={tight} />;
+    return (
+      <QtyStepper
+        lang={lang}
+        productId={product.id}
+        itemId={line.itemId}
+        quantity={line.quantity}
+        max={product.maxQty}
+        size={size}
+        compact={compact}
+        tight={tight}
+      />
+    );
   }
   const label = `${t.buy.buy} — ${lang === 'hi' ? (product.nameHi ?? product.name) : product.name}`;
   if (compact) {
@@ -95,7 +110,12 @@ export function BuyButton({
   }
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} aria-label={label} className={`${buttonClass('primary', size === 'md' ? 'md' : 'sm', true)} tracking-wide ${tight ? TIGHT : ''}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={label}
+        className={`${buttonClass('primary', size === 'md' ? 'md' : 'sm', true)} tracking-wide ${tight ? TIGHT : ''}`}
+      >
         <Icon name="shopping-bag" size={tight ? 15 : 18} className={tight ? 'sm:hidden' : ''} />
         {tight ? <Icon name="shopping-bag" size={18} className="hidden sm:block" /> : null}
         {t.buy.buy}
@@ -106,14 +126,23 @@ export function BuyButton({
 }
 
 /** The round "+" used where there is genuinely no room for a word (the bag bar, not a card). */
-const ROUND = 'grid h-9 w-9 place-items-center rounded-full border-2 border-white bg-em-700 text-white shadow-2 transition-transform duration-150 active:scale-95';
+const ROUND =
+  'grid h-9 w-9 place-items-center rounded-full border-2 border-white bg-em-700 text-white shadow-2 transition-transform duration-150 active:scale-95';
 /**
  * Product-card sizing on a phone: 34 px tall and a point smaller, so the word still fits on a
  * 115 px card and two complete rows still fit on a 390 × 844 screen. Full size from `sm` up.
  */
 const TIGHT = '!h-[30px] !gap-1 !text-[12px] sm:!h-9 sm:!gap-1.5 sm:!text-body lg:!h-[28px] lg:!text-[12px]';
 
-function BuySheet({ lang, product, onClose }: { lang: Lang; product: BuyProduct; onClose: () => void }): React.ReactNode {
+function BuySheet({
+  lang,
+  product,
+  onClose,
+}: {
+  lang: Lang;
+  product: BuyProduct;
+  onClose: () => void;
+}): React.ReactNode {
   const t = dict(lang);
   const router = useRouter();
   const [qty, setQty] = useState(1);
@@ -150,10 +179,20 @@ function BuySheet({ lang, product, onClose }: { lang: Lang; product: BuyProduct;
       closeLabel={t.common.close}
       footer={
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" disabled={!!busy} onClick={() => void commit('more')} className={`${buttonClass('secondary', 'lg', true)} !px-2 text-base leading-tight`}>
+          <button
+            type="button"
+            disabled={!!busy}
+            onClick={() => void commit('more')}
+            className={`${buttonClass('secondary', 'lg', true)} !px-2 text-base leading-tight`}
+          >
             {busy === 'more' ? t.common.saving : t.buy.moreShopping}
           </button>
-          <button type="button" disabled={!!busy} onClick={() => void commit('go')} className={`${buttonClass('primary', 'lg', true)} !px-2 text-base leading-tight`}>
+          <button
+            type="button"
+            disabled={!!busy}
+            onClick={() => void commit('go')}
+            className={`${buttonClass('primary', 'lg', true)} !px-2 text-base leading-tight`}
+          >
             {busy === 'go' ? t.common.saving : t.buy.proceed} <Icon name="arrow-right" size={18} />
           </button>
         </div>
@@ -162,23 +201,47 @@ function BuySheet({ lang, product, onClose }: { lang: Lang; product: BuyProduct;
       <div className="space-y-5 px-5 py-4">
         <div className="flex items-center gap-4">
           <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl ring-1 ring-line">
-            <ProductVisual name={product.name} nameHi={product.nameHi} image={product.image} icon={product.icon} family={product.family} lang={lang} size="sm" width={160} />
+            <ProductVisual
+              name={product.name}
+              nameHi={product.nameHi}
+              image={product.image}
+              icon={product.icon}
+              family={product.family}
+              lang={lang}
+              size="sm"
+              width={160}
+            />
           </div>
           <div className="min-w-0">
             <p className="text-lg font-semibold leading-snug text-ink">{title}</p>
-            <p className="text-base text-ink-3">{t.buy.unitEach(product.unit)} · <span className="fb-price text-ink">{rupees(product.price)}</span></p>
+            <p className="text-base text-ink-3">
+              {t.buy.unitEach(product.unit)} ·{' '}
+              <span className="fb-price text-ink">{rupees(product.price)}</span>
+            </p>
           </div>
         </div>
 
         <div className="flex items-center justify-center gap-5">
-          <button type="button" aria-label="−" disabled={qty <= 1} onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-14 w-14 place-items-center rounded-full border border-line-2 text-em-800 disabled:opacity-40">
+          <button
+            type="button"
+            aria-label="−"
+            disabled={qty <= 1}
+            onClick={() => setQty((q) => Math.max(1, q - 1))}
+            className="grid h-14 w-14 place-items-center rounded-full border border-line-2 text-em-800 disabled:opacity-40"
+          >
             <Icon name="minus" size={24} />
           </button>
           <div className="min-w-[120px] text-center" aria-live="polite">
-            <p className="fb-price text-4xl text-ink">{qty}</p>
-            <p className="text-base font-semibold text-em-700">{multiplyUnit(product.unit, qty)}</p>
+            <p className="text-4xl font-semibold text-em-700">{multiplyUnit(product.unit, qty)}</p>
+            <p className="fb-price text-base text-ink">{qty}</p>
           </div>
-          <button type="button" aria-label="+" disabled={qty >= max} onClick={() => setQty((q) => Math.min(max, q + 1))} className="grid h-14 w-14 place-items-center rounded-full bg-em-700 text-white disabled:opacity-40">
+          <button
+            type="button"
+            aria-label="+"
+            disabled={qty >= max}
+            onClick={() => setQty((q) => Math.min(max, q + 1))}
+            className="grid h-14 w-14 place-items-center rounded-full bg-em-700 text-white disabled:opacity-40"
+          >
             <Icon name="plus" size={24} />
           </button>
         </div>
@@ -186,7 +249,12 @@ function BuySheet({ lang, product, onClose }: { lang: Lang; product: BuyProduct;
         {presets.length > 1 ? (
           <div className="flex justify-center gap-2">
             {presets.map((n) => (
-              <button key={n} type="button" onClick={() => setQty(n)} className={`h-10 min-w-12 rounded-full border px-3 text-base font-semibold ${qty === n ? 'border-em-700 bg-em-700 text-white' : 'border-line-2 bg-card text-ink-2'}`}>
+              <button
+                key={n}
+                type="button"
+                onClick={() => setQty(n)}
+                className={`h-10 min-w-12 rounded-full border px-3 text-base font-semibold ${qty === n ? 'border-em-700 bg-em-700 text-white' : 'border-line-2 bg-card text-ink-2'}`}
+              >
                 {n}
               </button>
             ))}
@@ -252,11 +320,23 @@ export function QtyStepper({
     // the 44 px the rest of the site holds itself to in the direction that matters for a thumb.
     return (
       <div className="flex h-9 items-stretch overflow-hidden rounded-full border-2 border-white bg-em-700 text-white shadow-2">
-        <button type="button" aria-label="−" disabled={busy} onClick={() => void change(qty - 1)} className="grid w-8 place-items-center active:bg-em-800">
+        <button
+          type="button"
+          aria-label="−"
+          disabled={busy}
+          onClick={() => void change(qty - 1)}
+          className="grid w-8 place-items-center active:bg-em-800"
+        >
           <Icon name={qty <= 1 ? 'trash' : 'minus'} size={16} />
         </button>
         <span className="grid min-w-6 place-items-center px-0.5 text-base font-bold tabular-nums">{qty}</span>
-        <button type="button" aria-label="+" disabled={busy || (max !== undefined && qty >= max)} onClick={() => void change(qty + 1)} className="grid w-8 place-items-center active:bg-em-800 disabled:opacity-50">
+        <button
+          type="button"
+          aria-label="+"
+          disabled={busy || (max !== undefined && qty >= max)}
+          onClick={() => void change(qty + 1)}
+          className="grid w-8 place-items-center active:bg-em-800 disabled:opacity-50"
+        >
           <Icon name="plus" size={16} />
         </button>
       </div>
@@ -267,12 +347,28 @@ export function QtyStepper({
   const h = tight ? 'h-[30px] sm:h-9 lg:h-[28px]' : size === 'md' ? 'h-12' : 'h-10';
   return (
     <div className="w-full">
-      <div className={`flex ${h} items-stretch overflow-hidden rounded border border-em-700 bg-em-700 text-white`}>
-        <button type="button" aria-label="−" disabled={busy} onClick={() => void change(qty - 1)} className="grid w-11 place-items-center hover:bg-em-600">
+      <div
+        className={`flex ${h} items-stretch overflow-hidden rounded border border-em-700 bg-em-700 text-white`}
+      >
+        <button
+          type="button"
+          aria-label="−"
+          disabled={busy}
+          onClick={() => void change(qty - 1)}
+          className="grid w-11 place-items-center hover:bg-em-600"
+        >
           <Icon name={qty <= 1 ? 'trash' : 'minus'} size={18} />
         </button>
-        <span className="flex flex-1 items-center justify-center gap-1 bg-card text-body font-semibold text-em-800 tabular-nums">{qty}</span>
-        <button type="button" aria-label="+" disabled={busy || (max !== undefined && qty >= max)} onClick={() => void change(qty + 1)} className="grid w-11 place-items-center hover:bg-em-600 disabled:opacity-50">
+        <span className="flex flex-1 items-center justify-center gap-1 bg-card text-body font-semibold text-em-800 tabular-nums">
+          {qty}
+        </span>
+        <button
+          type="button"
+          aria-label="+"
+          disabled={busy || (max !== undefined && qty >= max)}
+          onClick={() => void change(qty + 1)}
+          className="grid w-11 place-items-center hover:bg-em-600 disabled:opacity-50"
+        >
           <Icon name="plus" size={18} />
         </button>
       </div>
@@ -282,7 +378,19 @@ export function QtyStepper({
 }
 
 /** Cart page stepper. */
-export function CartQty({ lang, itemId, quantity, max, productId = 0 }: { lang: Lang; itemId: number; quantity: number; max?: number; productId?: number }): React.ReactNode {
+export function CartQty({
+  lang,
+  itemId,
+  quantity,
+  max,
+  productId = 0,
+}: {
+  lang: Lang;
+  itemId: number;
+  quantity: number;
+  max?: number;
+  productId?: number;
+}): React.ReactNode {
   return <QtyStepper lang={lang} productId={productId} itemId={itemId} quantity={quantity} max={max} />;
 }
 

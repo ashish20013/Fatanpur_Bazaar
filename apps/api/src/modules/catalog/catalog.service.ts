@@ -144,7 +144,7 @@ export class CatalogService {
           .where((q) => q.whereNull('ends_at').orWhere('ends_at', '>=', this.db.fn.now()))
           .orderBy('sort_order')
           .limit(5)
-          .select('id', 'title', 'image_url', 'link_url'),
+          .select('id', 'title', 'image_url', 'image_url_sm', 'link_url'),
         this.compliance.navItems(),
         this.listProducts({ sort: 'popular' }, 1, 12).then((r) => r.items.filter((_, i) => i < 8)),
         this.popularThisWeek(8),
@@ -157,14 +157,14 @@ export class CatalogService {
       ]);
       return {
         banners: (
-          banners as { id: number; title: string; image_url: string | null; link_url: string | null }[]
+          banners as { id: number; title: string; image_url: string | null; image_url_sm: string | null; link_url: string | null }[]
         )
           .filter((b) => b.image_url)
           .map((b) => ({
             id: b.id,
             title: b.title,
             imageUrl: b.image_url as string,
-            imageUrlSm: (b.image_url as string).replace(/-1280\.webp$/, '-640.webp'),
+            imageUrlSm: b.image_url_sm ?? (b.image_url as string).replace(/-1280\.webp$/, '-640.webp'),
             linkUrl: b.link_url,
             // The 320×50 advertising strip, at the two widths the pipeline writes. Declared so the
             // slot can reserve its height before the picture arrives — a banner that pushes the

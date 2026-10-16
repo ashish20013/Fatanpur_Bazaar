@@ -327,7 +327,11 @@ export class AdminCatalogService {
   }
   async saveBanner(id: number | null, b: { title: string; subtitle?: string; linkUrl?: string; position?: string; sortOrder?: number; isActive?: boolean; startsAt?: string | null; endsAt?: string | null }, image: Buffer | null): Promise<{ id: number }> {
     const row: Record<string, unknown> = { title: b.title, subtitle: b.subtitle ?? null, link_url: b.linkUrl ?? null, position: b.position ?? 'HOME_TOP', sort_order: b.sortOrder ?? 0, is_active: b.isActive === false ? 0 : 1, starts_at: b.startsAt ?? null, ends_at: b.endsAt ?? null };
-    if (image) row.image_url = (await this.images.storeProductImage(image, slugify(b.title) || 'banner', 'banners')).urlLg;
+    if (image) {
+      const stored = await this.images.storeProductImage(image, slugify(b.title) || 'banner', 'banners');
+      row.image_url = stored.urlLg;
+      row.image_url_sm = stored.urlSm;
+    }
     let rid = id;
     if (id) await this.db('banners').where({ id }).update(row);
     else [rid] = await this.db('banners').insert(row);

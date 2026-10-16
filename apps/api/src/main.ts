@@ -130,6 +130,27 @@ async function bootstrap(): Promise<void> {
   const uploads = join(env.STORAGE_PATH, 'uploads');
   mkdirSync(uploads, { recursive: true });
   app.use('/uploads', express.static(uploads, { index: false, dotfiles: 'deny', immutable: true, maxAge: '30d', fallthrough: false, setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff') }));
+  /*
+   * IMAGE 404 LOGGING — when express.static with fallthrough:false cannot find a file it calls
+   * next(err) with a 404 error. This error handler logs the missing path so an admin can see
+   * which DB rows point at files that are not on disk. Without this, broken images are invisible
+   * to everyone except the customer staring at a blank box.
+   *
+   * The handler is scoped to /uploads by being mounted right after the static middleware, before
+   * the global rate limiter and NestJS routes.
+   */
+  app.use('/uploads', (err: { status?: number; statusCode?: number }, req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status ?? err.statusCode ?? 500;
+    if (status === 404) {
+      Log.warn('image.missing_on_disk', { path: req.originalUrl });
+    } else {
+      Log.error('image.serve_error', { path: req.originalUrl, status });
+    }
+    if (!res.headersSent) {
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(status).end();
+    }
+  });
   app.use(globalRateLimit());
   app.use(cookieParser());
   // Body limits: 1 MB JSON; multipart routes set their own (8 MB images / 5 MB prescriptions).
@@ -137,7 +158,7 @@ async function bootstrap(): Promise<void> {
   app.useBodyParser('urlencoded', { limit: '1mb', extended: false });
   app.use(cacheHeaders);
   app.enableCors({
-    origin: (origin, cb) => cb(null, !origin || env.ALLOWED_ORIGINS.includes(origin)), // ⚠️ allowlist only, never '*'
+    origin: (origin, cb) => cb(null, !origin || env.ALLOWED_ORIGINS.includes(origin)), // allowlist only, never '*'
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Authorization', 'Content-Type', 'X-Guest-Key', 'X-Idempotency-Key', 'X-Device-Id', 'X-Platform'],
