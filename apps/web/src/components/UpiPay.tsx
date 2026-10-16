@@ -7,6 +7,7 @@ import { call, errText } from '@/lib/client';
 import { rupees } from '@/lib/format';
 import { dict, type Lang } from '@/lib/i18n';
 import { Icon } from './icons';
+import { SafeImg } from './SafeImg';
 import { buttonClass } from './ui';
 
 /**
@@ -84,8 +85,7 @@ export function UpiPay({ lang, orderNumber, upi }: { lang: Lang; orderNumber: st
       </a>
       <div className="hidden sm:block">
         <p className="mb-1 text-base text-ink-2">{t.payment.scan}</p>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={qr} alt={t.payment.scan} width={220} height={220} className="rounded-xl border border-line bg-white p-2 shadow-1" />
+        <SafeImg src={qr} alt={t.payment.scan} width={220} height={220} className="rounded-xl border border-line bg-white p-2 shadow-1" fallback={<div className="grid h-[220px] w-[220px] place-items-center rounded-xl border border-line bg-white p-2 text-ink-3 shadow-1"><Icon name="qrcode" size={48} /><span className="mt-1 text-sm">{t.payment.scan}</span></div>} />
       </div>
 
       {/* Step 2 — say so. One tap, and the order is confirmed. */}

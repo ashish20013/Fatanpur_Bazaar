@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Breadcrumbs } from '@/components/list';
 import { JsonLd } from '@/components/JsonLd';
+import { SafeImg } from '@/components/SafeImg';
 import { ApiError, apiPaged, publicApi } from '@/lib/api';
 import { PUBLIC_API_URL } from '@/lib/env';
 import { imageUrl, formatDate } from '@/lib/format';
@@ -92,10 +93,16 @@ export default async function BlogPostPage({ params }: Params): Promise<ReactNod
         </p>
       </header>
       {img ? (
-        // 3:1 to match what the Banners uploader produces. The declared size used to say 630 while
-        // the file was 400 tall, so the article jumped as the cover loaded.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={img} alt={p.title} width={1200} height={400} fetchPriority="high" decoding="sync" className="aspect-[3/1] w-full rounded object-cover" />
+        <SafeImg
+          src={img}
+          alt={p.title}
+          width={1200}
+          height={400}
+          fetchPriority="high"
+          decoding="sync"
+          className="aspect-[3/1] w-full rounded object-cover"
+          fallback={<div className="aspect-[3/1] w-full rounded bg-paper-2" />}
+        />
       ) : null}
       {/* ⚠️ Admin HTML save ke waqt sanitise ho chuki hai (ContentService.savePost) — isliye yahan surakshit hai */}
       <div className="fb-prose text-base text-ink-2" dangerouslySetInnerHTML={{ __html: p.bodyHtml }} />

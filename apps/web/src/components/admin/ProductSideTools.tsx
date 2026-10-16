@@ -6,12 +6,14 @@ import { call } from '@/lib/client';
 import { PUBLIC_API_URL } from '@/lib/env';
 import { imageUrl } from '@/lib/format';
 import { Icon } from '../icons';
+import { SafeImg } from '../SafeImg';
 import { buttonClass } from '../ui';
 import { upload, useAdminAction } from './admin-client';
 import { Field, Notice, inputCls } from './form-kit';
 import type { ProductImageRow } from './product-form-model';
+import { imageRuleHint } from '@fb/shared-types';
+import { checkImageFile } from '@/lib/image-check';
 
-const MAX_BYTES = 8 * 1024 * 1024;
 const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 /** Photos: uploaded as-is, the API strips EXIF and makes 200/600/1200w WebP (A27). First photo = card image. */
@@ -21,8 +23,20 @@ export function ProductPhotos({ productId, images, defaultAlt }: { productId: nu
 
   async function onFiles(list: FileList | null): Promise<void> {
     const files = Array.from(list ?? []);
-    const bad = files.find((f) => !TYPES.includes(f.type) || f.size > MAX_BYTES);
-    if (bad) return a.setErr(`"${bad.name}" is not a JPG/PNG/WebP under 8 MB.`);
+    const wrongType = files.find((f) => !TYPES.includes(f.type));
+    if (wrongType) return a.setErr(`"${wrongType.name}" is not a JPG, PNG or WebP.`);
+    /*
+     * Every file is measured here, in the browser, before anything is uploaded.
+     *
+     * The server enforces the same rules and is the one that counts — but the shopkeeper adds
+     * stock from a phone on a village connection, and a 5 MB photo that is going to be refused
+     * costs him a minute of uploading before he finds out. Reading its size locally costs
+     * milliseconds and no data at all.
+     */
+    for (const f of files) {
+      const bad = await checkImageFile('products', f);
+      if (bad) return a.setErr(`"${f.name}" — ${bad}`);
+    }
     for (const [i, file] of files.entries()) {
       const fd = new FormData();
       fd.append('file', file);
@@ -44,8 +58,15 @@ export function ProductPhotos({ productId, images, defaultAlt }: { productId: nu
         <ul className="grid grid-cols-3 gap-2">
           {images.map((img, i) => (
             <li key={img.id} className="relative overflow-hidden rounded border border-line bg-paper">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imageUrl(img.url_sm ?? img.url, PUBLIC_API_URL) ?? ''} alt={img.alt ?? ''} width={200} height={200} loading="lazy" className="aspect-square w-full object-cover" />
+              <SafeImg
+                src={imageUrl(img.url_sm ?? img.url, PUBLIC_API_URL) ?? ''}
+                alt={img.alt ?? ''}
+                width={200}
+                height={200}
+                loading="lazy"
+                className="aspect-square w-full object-cover"
+                fallback={<span className="grid aspect-square w-full place-items-center bg-paper-2 text-ink-3"><Icon name="photo" size={32} /></span>}
+              />
               {i === 0 ? <span className="absolute left-1 top-1 rounded-full bg-em-700 px-1.5 text-xs font-semibold text-white">Main</span> : null}
               <button type="button" disabled={a.busy === `del-${img.id}`} onClick={() => void remove(img)} aria-label="Delete photo" className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-full bg-card/90 text-danger shadow-1 hover:bg-card">
                 <Icon name="trash" size={16} />
@@ -65,7 +86,8 @@ export function ProductPhotos({ productId, images, defaultAlt }: { productId: nu
         <Icon name="photo" size={18} /> {a.busy === 'upload' ? 'Uploading…' : 'Upload photos'}
         <input type="file" accept={TYPES.join(',')} multiple className="sr-only" onChange={(e) => void onFiles(e.target.files).finally(() => (e.target.value = ''))} />
       </label>
-      <p className="text-sm text-ink-3">JPG, PNG or WebP, up to 8 MB each. Square photos look best.</p>
+      <p className="text-sm text-ink-3">{imageRuleHint('products', 'en')}</p>
+      <p className="text-sm text-ink-3" lang="hi">{imageRuleHint('products', 'hi')}</p>
       <Notice err={a.err} ok={a.ok} />
     </section>
   );

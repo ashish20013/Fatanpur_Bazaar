@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { RootCategory } from '@fb/shared-types';
 import { dict, type Lang } from '@/lib/i18n';
@@ -9,6 +9,7 @@ import { toneFor } from '@/lib/tones';
 import { imageUrl } from '@/lib/format';
 import { PUBLIC_API_URL } from '@/lib/env';
 import { ColourArt, Icon } from './icons';
+import { SafeImg } from './SafeImg';
 import { Sheet } from './Sheet';
 
 /** Pixels per second the rail travels on its own. One medallion crosses a phone in ~8 s. */
@@ -40,8 +41,11 @@ export function CategoryRail({ lang, roots, active: activeProp, supportPhone }: 
   const [drift, setDrift] = useState(false);
   const [paused, setPaused] = useState(false);
   const [soon, setSoon] = useState<RootCategory | null>(null);
-  // Track category IDs whose images failed to load — swap to the ColourArt icon fallback.
+  // Track which category images failed so we fall back to the icon medallion.
   const [failedImgs, setFailedImgs] = useState<Set<number>>(() => new Set());
+  const markImgFailed = useCallback((id: number) => {
+    setFailedImgs((prev) => { const next = new Set(prev); next.add(id); return next; });
+  }, []);
   const box = useRef<HTMLDivElement>(null);
   // Read inside the animation frame so pausing does not tear down and restart the loop.
   const pausedRef = useRef(false);
@@ -105,22 +109,11 @@ export function CategoryRail({ lang, roots, active: activeProp, supportPhone }: 
     const tone = toneFor(c.slug);
     const isActive = active === c.slug;
     const photo = failedImgs.has(c.id) ? null : imageUrl(c.image, PUBLIC_API_URL);
-    /*
-     * A shop front, not a symbol.
-     *
-     * A 70 px circle can hold a drawing of a basket; it cannot hold a shop. Cropping a photograph
-     * of a kirana store into a circle that size throws away the very thing that makes someone tap
-     * it — the stacked sacks, the shelves, the awning that says "this is a shop you walk into".
-     * So the medallion became a card: a square picture at a size where the shop is legible, with
-     * the name under it. Categories the shopkeeper has not photographed yet keep their drawing,
-     * centred on a tinted card of exactly the same size, so a half-finished rail still lines up.
-     *
-     * 68 px on a phone: five shops fit across a 390 px screen and the shelves inside each one are
-     * still legible. It was 84 px until the advertising strip moved in above the goods — between
-     * them, the rail and the strip were pushing the second row of products off the first screen,
-     * and the owner's rule is that the first screen carries three columns and two full rows. A
-     * medallion is a signpost; a product is the thing being sold. The signpost gave up the pixels.
-     */
+    const iconFallback = (
+      <span className="grid h-full w-full place-items-center">
+        <ColourArt name={`cat-${c.slug}`} fallback={c.icon ?? 'basket'} size={36} className="sm:h-[40px] sm:w-[40px] lg:h-[30px] lg:w-[30px]" />
+      </span>
+    );
     const medal = (
       <>
         <span
@@ -128,12 +121,19 @@ export function CategoryRail({ lang, roots, active: activeProp, supportPhone }: 
           style={photo ? undefined : { background: `radial-gradient(circle at 30% 25%, #fffdf8 0%, ${tone.bg} 62%)`, color: tone.fg }}
         >
           {photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photo} alt={name(c)} width={320} height={320} loading="lazy" decoding="async" className="h-full w-full object-cover" onError={() => setFailedImgs((s) => new Set(s).add(c.id))} />
+            <SafeImg
+              src={photo}
+              alt=""
+              width={320}
+              height={320}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+              onFail={() => markImgFailed(c.id)}
+              fallback={iconFallback}
+            />
           ) : (
-            <span className="grid h-full w-full place-items-center">
-              <ColourArt name={`cat-${c.slug}`} fallback={c.icon ?? 'basket'} size={36} className="sm:h-[40px] sm:w-[40px] lg:h-[30px] lg:w-[30px]" />
-            </span>
+            iconFallback
           )}
           {c.upcoming ? (
             <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-au-500 px-1.5 text-[10px] font-semibold leading-4 text-em-900">{t.rail.upcoming}</span>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Icon } from '../icons';
+import { SafeImg } from '../SafeImg';
 import { Sheet } from '../Sheet';
 
 export interface StaffLink {
@@ -57,8 +58,7 @@ export function StaffNav({ links, title, who }: { links: StaffLink[]; title: str
   }
   const brand = (
     <div className="flex items-center gap-3 px-3">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/wordmark-white.svg" alt="Fatanpur Bazaar" width={90} height={34} className="h-[34px] w-auto" />
+      <SafeImg src="/brand/wordmark.svg" alt="Fatanpur Bazaar" width={90} height={34} className="h-[34px] w-auto" fallback={<span className="text-sm font-semibold text-au-300">फतनपुर बाज़ार</span>} />
       <span className="rounded-full border border-au-400/50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-au-200">{title}</span>
     </div>
   );

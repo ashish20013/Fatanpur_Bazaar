@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HomeBanner } from '@fb/shared-types';
 import { imageUrl } from '@/lib/format';
 import { PUBLIC_API_URL } from '@/lib/env';
 import { dict, type Lang } from '@/lib/i18n';
+import { SafeImg } from './SafeImg';
 
 /**
  * The advertising strip above the goods — a 320×50 slot, the size every ad network hands artwork
@@ -41,14 +42,19 @@ export function BannerStrip({ lang, banners, seconds }: { lang: Lang; banners: H
   const t = dict(lang);
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
-  // Track banner IDs whose images failed to load — hide the broken slide entirely.
-  const [failedBanners, setFailedBanners] = useState<Set<number>>(() => new Set());
   // Read inside the timer so pausing does not tear the interval down and start it over, which
   // would hand whoever touched the strip a fresh full-length hold on the slide they are reading.
   const pausedRef = useRef(false);
   pausedRef.current = paused;
 
-  const n = banners.length;
+  // Track which banner images failed to load so we skip them instead of showing broken icons.
+  const [failedIds, setFailedIds] = useState<Set<number>>(() => new Set());
+  const markFailed = useCallback((id: number) => {
+    setFailedIds((prev) => { const next = new Set(prev); next.add(id); return next; });
+  }, []);
+  const liveBanners = banners.filter((b) => !failedIds.has(b.id));
+
+  const n = liveBanners.length;
   const holdMs = Math.min(MAX_S, Math.max(MIN_S, Number(seconds) || 5)) * 1000;
 
   useEffect(() => {
@@ -64,24 +70,20 @@ export function BannerStrip({ lang, banners, seconds }: { lang: Lang; banners: H
   if (!n) return null;
 
   const slide = (b: HomeBanner, idx: number): React.ReactNode => {
-    // `imageUrl` returns null for an empty path; a slide with no picture is simply not drawn
-    // rather than rendered as a broken-image box. Same for images that failed to load.
     const src = imageUrl(b.imageUrlSm ?? b.imageUrl, PUBLIC_API_URL);
-    if (!src || failedBanners.has(b.id)) return null;
+    if (!src) return null;
     const img = (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <SafeImg
         src={src}
         alt={b.title}
         width={b.width}
         height={b.height}
-        /* The first banner is on the first screen, so it is fetched straight away; the rest wait
-           until the strip actually reaches them. */
         loading={idx === 0 ? 'eager' : 'lazy'}
         decoding="async"
         fetchPriority={idx === 0 ? 'high' : 'auto'}
-        onError={() => setFailedBanners((s) => new Set(s).add(b.id))}
         className="h-full w-full object-cover"
+        onFail={() => markFailed(b.id)}
+        fallback={<div className="h-full w-full bg-paper-2" />}
       />
     );
     return (
@@ -103,9 +105,6 @@ export function BannerStrip({ lang, banners, seconds }: { lang: Lang; banners: H
         aria-label={t.home.offersStrip}
         aria-roledescription="carousel"
         className="relative mx-auto w-full max-w-[640px] overflow-hidden rounded-[10px] bg-paper-2 shadow-1 lg:max-w-[400px]"
-        /* The reserved box. `aspect-ratio` rather than a fixed height so the strip is 320×50 on a
-           small phone and 640×100 on a desktop without a single media query — and so the space is
-           held before the picture lands. */
         style={{ aspectRatio: `${RATIO}` }}
         onPointerDown={() => setPaused(true)}
         onPointerUp={() => setPaused(false)}
@@ -115,7 +114,7 @@ export function BannerStrip({ lang, banners, seconds }: { lang: Lang; banners: H
         onFocus={() => setPaused(true)}
         onBlur={() => setPaused(false)}
       >
-        {banners.map(slide)}
+        {liveBanners.map(slide)}
 
         {n > 1 ? (
           /*
@@ -125,7 +124,7 @@ export function BannerStrip({ lang, banners, seconds }: { lang: Lang; banners: H
            * again of its height spent on furniture.
            */
           <div className="absolute inset-x-0 bottom-1 flex justify-center gap-1.5">
-            {banners.map((b, idx) => (
+            {liveBanners.map((b, idx) => (
               <button
                 key={b.id}
                 type="button"

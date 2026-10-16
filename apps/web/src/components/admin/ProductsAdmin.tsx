@@ -10,6 +10,7 @@ import { imageUrl, rupees } from '@/lib/format';
 import { dict, type Lang } from '@/lib/i18n';
 import { Pagination } from '../list';
 import { Icon } from '../icons';
+import { SafeImg } from '../SafeImg';
 import { Badge, EmptyState, buttonClass } from '../ui';
 import { TableWrap, Td, Th } from './table';
 
@@ -97,8 +98,7 @@ export function ProductsAdmin({ lang, rows, meta, search }: { lang: Lang; rows: 
                     <Td>
                       <span className="flex items-center gap-2">
                         {img ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={img} alt={p.nameHi ?? p.name} width={36} height={36} loading="lazy" className="h-9 w-9 rounded object-cover" />
+                          <SafeImg src={img} alt="" width={36} height={36} loading="lazy" className="h-9 w-9 rounded object-cover" fallback={<span className="grid h-9 w-9 place-items-center rounded bg-paper-2"><Icon name="photo" size={16} /></span>} />
                         ) : null}
                         <span>
                           <Link href={`/admin/products/${p.id}`} className="block font-semibold text-ink no-underline hover:text-em-700 hover:underline">

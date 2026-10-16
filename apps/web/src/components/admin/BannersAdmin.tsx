@@ -5,9 +5,12 @@ import { call } from '@/lib/client';
 import { PUBLIC_API_URL } from '@/lib/env';
 import { imageUrl } from '@/lib/format';
 import { Icon } from '../icons';
+import { SafeImg } from '../SafeImg';
 import { Badge, EmptyState, buttonClass } from '../ui';
 import { upload, useAdminAction } from './admin-client';
 import { Check, Field, Notice, PanelTitle, inputCls } from './form-kit';
+import { imageRuleHint } from '@fb/shared-types';
+import { checkImageFile } from '@/lib/image-check';
 
 type Position = 'HOME_TOP' | 'HOME_MID' | 'CATEGORY';
 
@@ -34,7 +37,6 @@ interface BannerForm {
 }
 
 const POSITION_LABEL: Record<Position, string> = { HOME_TOP: 'Home — top slider', HOME_MID: 'Home — middle strip', CATEGORY: 'Category pages' };
-const MAX_BYTES = 8 * 1024 * 1024;
 const EMPTY: BannerForm = { title: '', subtitle: '', linkUrl: '', position: 'HOME_TOP', sortOrder: '0', isActive: true, file: null };
 
 function fromRow(b: BannerRow): BannerForm {
@@ -89,14 +91,22 @@ function BannerEditor({ initial, busy, onSave, onCancel, isNew }: { initial: Ban
       <Field label="Sort order">
         <input inputMode="numeric" value={f.sortOrder} onChange={(e) => set('sortOrder', e.target.value.replace(/[^\d-]/g, ''))} className={inputCls} />
       </Field>
-      <Field label={isNew ? 'Image (JPG, PNG or WebP, max 8 MB)' : 'Replace image (optional)'} hint={fileErr ?? 'Wide images work best (about 1200 × 400).'}>
+      <Field label={isNew ? 'Image' : 'Replace image (optional)'} hint={fileErr ?? imageRuleHint('banners', 'en')}>
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
           onChange={(e) => {
             const file = e.target.files?.[0] ?? null;
-            setFileErr(file && file.size > MAX_BYTES ? 'That file is larger than 8 MB.' : null);
-            set('file', file && file.size <= MAX_BYTES ? file : null);
+            if (!file) {
+              setFileErr(null);
+              set('file', null);
+              return;
+            }
+            // Measured before it is uploaded — the server checks the same rule and is what counts.
+            void checkImageFile('banners', file).then((bad) => {
+              setFileErr(bad);
+              set('file', bad ? null : file);
+            });
           }}
           className="block w-full text-base file:mr-3 file:h-10 file:rounded file:border file:border-line-2 file:bg-card file:px-3 file:font-semibold file:text-em-800"
         />
@@ -138,8 +148,15 @@ function BannerCard({ b, busy, onEdit, onDelete }: { b: BannerRow; busy: boolean
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <div className="aspect-[3/1] w-full shrink-0 overflow-hidden rounded border border-line bg-paper sm:w-60">
         {img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt={b.title} width={240} height={80} loading="lazy" className="h-full w-full object-cover" />
+          <SafeImg
+            src={img}
+            alt={b.title}
+            width={240}
+            height={80}
+            loading="lazy"
+            className="h-full w-full object-cover"
+            fallback={<span className="grid h-full place-items-center text-ink-3"><Icon name="photo" size={28} /></span>}
+          />
         ) : (
           <span className="grid h-full place-items-center text-ink-3">
             <Icon name="photo" size={28} />

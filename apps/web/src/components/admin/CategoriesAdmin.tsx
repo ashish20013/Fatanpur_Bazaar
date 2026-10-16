@@ -6,10 +6,13 @@ import { call } from '@/lib/client';
 import { PUBLIC_API_URL } from '@/lib/env';
 import { imageUrl } from '@/lib/format';
 import { ColourArt, Icon } from '../icons';
+import { SafeImg } from '../SafeImg';
 import { Badge, EmptyState, buttonClass } from '../ui';
 import { opt, upload, useAdminAction } from './admin-client';
 import { Check, Field, Notice, PanelTitle, inputCls, textareaCls } from './form-kit';
 import { TableWrap, Td, Th } from './table';
+import { imageRuleHint } from '@fb/shared-types';
+import { checkImageFile } from '@/lib/image-check';
 
 /** Row exactly as GET /admin/categories returns it (raw columns + counts). */
 export interface CategoryRow {
@@ -173,15 +176,15 @@ function CategoryForm({ initial, rows, selfId, slug, busy, onSave, onCancel }: {
 /** 40px preview of whatever the website will show for this category. */
 function CategoryThumb({ c }: { c: CategoryRow }): React.ReactNode {
   const src = imageUrl(c.image_url_sm ?? c.image_url, PUBLIC_API_URL);
-  if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={c.name_hi ?? c.name} width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-line" />;
-  }
-  return (
+  const iconFallback = (
     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-paper-2 ring-1 ring-line">
       <ColourArt name={`cat-${c.slug}`} fallback={c.icon ?? 'category'} size={26} />
     </span>
   );
+  if (src) {
+    return <SafeImg src={src} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-line" fallback={iconFallback} />;
+  }
+  return iconFallback;
 }
 
 function CategoryRowView({ c, onEdit, onDelete, onPhoto, onPhotoRemove, busy }: { c: CategoryRow; onEdit: () => void; onDelete: () => void; onPhoto: (f: File) => void; onPhotoRemove: () => void; busy: boolean }): React.ReactNode {
@@ -221,6 +224,7 @@ function CategoryRowView({ c, onEdit, onDelete, onPhoto, onPhotoRemove, busy }: 
                 e.target.value = ''; // so picking the same file twice still fires
                 if (f) onPhoto(f);
               }}
+              title={imageRuleHint('categories', 'en')}
             />
           </label>
           {c.image_url ? (
@@ -259,6 +263,10 @@ export function CategoriesAdmin({ rows }: { rows: CategoryRow[] }): React.ReactN
    * product shot, so the shopkeeper can use a straight phone photo here too.
    */
   async function setPhoto(c: CategoryRow, file: File): Promise<void> {
+    // Measured in the browser before it is uploaded, so a phone photo that would be refused never
+    // costs the shopkeeper a minute of 3G. The server checks the same rule and is what counts.
+    const bad = await checkImageFile('categories', file);
+    if (bad) return a.setErr(bad);
     const fd = new FormData();
     fd.append('file', file);
     await a.run(`photo-${c.id}`, () => upload(`/admin/categories/${c.id}/image`, fd), `Photo set for "${c.name}".`);

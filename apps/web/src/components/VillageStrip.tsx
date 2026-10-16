@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { dict, type Lang } from '@/lib/i18n';
+import { SafeImg } from './SafeImg';
 
 /**
  * The thin strip under the header: one picture, one promise, nothing else.
@@ -101,10 +102,16 @@ export function VillageStrip({
     <aside className="fb-strip" aria-label={line}>
       <span className="fb-strip-art" aria-hidden="true">
         {imageUrl ? (
-          // The shop's own photograph once it exists. object-cover + a fixed strip height means a
-          // portrait or a landscape shot both sit correctly and nothing shifts while it loads.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt="" width={1200} height={200} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+          <SafeImg
+            src={imageUrl}
+            alt=""
+            width={1200}
+            height={200}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+            fallback={<VillageScene />}
+          />
         ) : (
           <VillageScene />
         )}

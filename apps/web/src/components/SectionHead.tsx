@@ -4,6 +4,7 @@ import { toneFor } from '@/lib/tones';
 import { imageUrl } from '@/lib/format';
 import { PUBLIC_API_URL } from '@/lib/env';
 import { ColourArt, Icon } from './icons';
+import { SafeImg } from './SafeImg';
 
 /** Heading of a category block: medallion + display-serif name + "see all". */
 export function SectionHead({ slug, icon, image, title, sub, href, more, as = 'h2' }: { slug: string; icon: string | null; image?: string | null; title: string; sub?: string; href?: string; more?: string; as?: 'h1' | 'h2' }): ReactNode {
@@ -21,8 +22,16 @@ export function SectionHead({ slug, icon, image, title, sub, href, more, as = 'h
           style={photo ? undefined : { background: tone.bg, color: tone.fg }}
         >
           {photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photo} alt={title} width={96} height={96} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            <SafeImg
+              src={photo}
+              alt=""
+              width={96}
+              height={96}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+              fallback={<ColourArt name={`cat-${slug}`} fallback={icon ?? 'basket'} size={28} className="md:h-8 md:w-8" />}
+            />
           ) : (
             <ColourArt name={`cat-${slug}`} fallback={icon ?? 'basket'} size={28} className="md:h-8 md:w-8" />
           )}
