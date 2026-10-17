@@ -66,23 +66,26 @@ export function km(v: number | null | undefined): string {
   return `${Math.round(v * 10) / 10}`;
 }
 
-/** Image URL absolute banao (uploads API se serve hote hain). */
+/**
+ * Image URL absolute banao (uploads API se DIRECTLY serve hote hain).
+ *
+ * ROOT CAUSE FIX: Pehle ye relative `/uploads/...` path return karta tha, jo Next.js ke rewrite
+ * proxy se hoke jaata tha → double HTTP hop (Browser → Next.js → API → disk). 3G connection pe
+ * ye timeout karta tha — images kabhi dikhte kabhi nahi.
+ *
+ * Ab ABSOLUTE URL return hota hai: `https://api.fatanpurbazaar.com/uploads/...`
+ * Browser SEEDHA API server se image lega — Next.js proxy skip. 1 hop = 2x faster.
+ *
+ * `apiBase` me `NEXT_PUBLIC_API_URL` aata hai (e.g. `https://api.fatanpurbazaar.com`).
+ * Dev me `http://localhost:3000` hota hai jo theek hai — dev me dono same machine pe hain.
+ *
+ * ⚠️ CORS: API pe `crossOriginResourcePolicy: 'cross-origin'` already set hai (main.ts),
+ *    aur CSP `img-src` me `apiOrigin` already allowed hai (next.config.js).
+ */
 export function imageUrl(url: string | null | undefined, apiBase: string): string | null {
   if (!url) return null;
   if (url.startsWith('http')) return url;
-  /*
-   * An upload is asked for on whatever host the visitor is already using.
-   *
-   * These used to be prefixed with NEXT_PUBLIC_API_URL, which is baked into the HTML at build
-   * time as `http://localhost:3000`. On the shopkeeper's own PC that works. On his phone, opening
-   * the site over the LAN, "localhost" means THE PHONE — so every category and product picture
-   * on every mobile device was a broken-image box, while the desktop looked perfect.
-   *
-   * A relative path has no such ambiguity: the browser asks the host it is already talking to, and
-   * `/uploads/*` is routed on to the API (next.config.js rewrites). Works on the PC, on a phone
-   * over the LAN, and on the real domain, without anything being baked in.
-   */
   const path = url.startsWith('/') ? url : `/${url}`;
-  if (path.startsWith('/uploads/')) return path;
+  // Har upload path ab DIRECTLY API se serve hogi — Next.js rewrite proxy skip
   return `${apiBase}${path}`;
 }

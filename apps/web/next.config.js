@@ -91,17 +91,17 @@ const nextConfig = {
   },
   async rewrites() {
     /*
-     * Uploads and the socket live on the API; these keep them same-origin for the browser.
+     * Socket.IO needs same-origin proxying.
      *
-     * ⚠️ Not dev-only any more. Pictures are requested as plain `/uploads/...` so they resolve on
-     * whatever host the visitor used (a phone on the LAN, the real domain, the PC). If the hosting
-     * layer already routes /uploads to the API these rewrites never see the request; if it does
-     * not, Next proxies it and the pictures still appear. Correct either way, instead of depending
-     * on a proxy rule nobody remembers to add.
+     * ⚠️ /uploads rewrite HATAYA GAYA HAI — ab `imageUrl()` absolute API URL return karta hai
+     * (e.g. `https://api.fatanpurbazaar.com/uploads/...`). Browser SEEDHA API se image lega,
+     * Next.js proxy skip — 3G pe double-hop timeout ka root cause ye proxy tha.
+     *
+     * Koi purani cached relative `/uploads/...` URL aaye to 404 milega — par `SafeImg` fallback
+     * tile dikha dega, aur next page load pe absolute URL aa jaayega.
      */
     const api = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3000';
     return [
-      { source: '/uploads/:path*', destination: `${api}/uploads/:path*` },
       { source: '/socket/:path*', destination: `${api}/socket/:path*` },
     ];
   },

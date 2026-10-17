@@ -79,7 +79,7 @@ export function ProductVisual({
         loading={priority ? 'eager' : 'lazy'}
         decoding={priority ? 'sync' : 'async'}
         fetchPriority={priority ? 'high' : 'auto'}
-        className="aspect-square h-full w-full bg-paper-2 object-cover"
+        className="aspect-square h-full w-full bg-paper-2 object-contain"
         fallback={tile}
       />
     );
