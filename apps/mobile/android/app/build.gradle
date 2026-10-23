@@ -3,7 +3,7 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 // react-native-config — loads .env into BuildConfig
-apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
+apply from: file("../node_modules/react-native-config/android/dotenv.gradle")
 
 /**
  * Release signing — reads from keystore.properties (git-ignored) if present.

@@ -17,6 +17,3 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 
 rootProject.name = 'FatanpurBazaar'
 include ':app'
-
-// react-native-config
-includeBuild('../node_modules/react-native-config/android')
