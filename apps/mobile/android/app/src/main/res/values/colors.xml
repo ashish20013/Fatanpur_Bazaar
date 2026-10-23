@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#166b3c</color>
+    <color name="primary_dark">#0c3323</color>
+    <color name="accent">#a9660b</color>
+    <color name="surface">#f6f8f6</color>
+    <color name="card">#ffffff</color>
+    <color name="ink">#12211a</color>
+    <color name="danger">#c0392b</color>
+    <color name="white">#ffffff</color>
+</resources>

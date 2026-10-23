@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { PaymentMethod, PlaceOrderResponse, QuoteResponse } from '@fb/shared-types';
 import type { CustomerStackParamList } from '../../navigation/CustomerTabs';
@@ -35,6 +35,9 @@ interface OutOfAreaData {
   distanceKm: number;
   nearestServedKm: number | null;
 }
+interface WalletInfo {
+  balance: string;
+}
 
 /** A12/A14: this screen never trusts its own math — every total shown comes from POST /orders/quote. */
 export default function CheckoutScreen({ navigation }: NativeStackScreenProps<CustomerStackParamList, 'Checkout'>): React.JSX.Element {
@@ -46,6 +49,7 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | undefined>(undefined);
   const [useWallet, setUseWallet] = useState(false);
+  const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
   const [note, setNote] = useState('');
   const [prescriptions, setPrescriptions] = useState<PrescriptionRow[] | null>(null);
   const [prescriptionId, setPrescriptionId] = useState<number | null>(null);
@@ -68,18 +72,24 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
   useEffect(() => {
     void loadAddresses();
     api.get<PrescriptionRow[]>('/prescriptions').then(setPrescriptions).catch(() => setPrescriptions([]));
+    // FIX H1: Load wallet balance for wallet toggle UI
+    api.get<WalletInfo>('/wallet').then(setWalletInfo).catch(() => setWalletInfo(null));
   }, [loadAddresses]);
 
   useEffect(() => {
     const unsub = navigation.addListener('focus', () => {
       void loadAddresses();
       api.get<PrescriptionRow[]>('/prescriptions').then(setPrescriptions).catch(() => undefined);
+      api.get<WalletInfo>('/wallet').then(setWalletInfo).catch(() => undefined);
     });
     return unsub;
   }, [navigation, loadAddresses]);
 
   const items = (cart?.items ?? []).map((i) => ({ productId: i.productId, quantity: i.quantity }));
   const serviceSlotItem = (cart?.items ?? []).find((i) => i.itemType === 'SERVICE' && i.slotDate && i.slotStart);
+  // FIX C1: Determine orderType from cart items
+  const hasService = (cart?.items ?? []).some((i) => i.itemType === 'SERVICE');
+  const orderType = hasService ? 'SERVICE' : 'DELIVERY';
 
   const runQuote = useCallback(async () => {
     if (!addressId || items.length === 0) {
@@ -89,7 +99,8 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
     setQuoting(true);
     setQuoteError(null);
     try {
-      const q = await api.post<QuoteResponse>('/orders/quote', { addressId, items, couponCode: appliedCoupon, useWallet, paymentMethod: method });
+      // FIX C1: Include orderType in quote request
+      const q = await api.post<QuoteResponse>('/orders/quote', { addressId, items, couponCode: appliedCoupon, useWallet, paymentMethod: method, orderType });
       setQuote(q);
     } catch (e) {
       setQuote(null);
@@ -105,7 +116,7 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
       setQuoting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressId, JSON.stringify(items), appliedCoupon, useWallet, method]);
+  }, [addressId, JSON.stringify(items), appliedCoupon, useWallet, method, orderType]);
 
   useEffect(() => {
     void runQuote();
@@ -126,6 +137,8 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
           paymentMethod: method,
           prescriptionId: prescriptionId ?? undefined,
           note: note.trim() || undefined,
+          // FIX C1: Include orderType in order placement
+          orderType,
           slot: serviceSlotItem?.slotDate && serviceSlotItem.slotStart ? { date: serviceSlotItem.slotDate, start: serviceSlotItem.slotStart } : undefined,
         },
         { 'X-Idempotency-Key': idemKey.current },
@@ -163,6 +176,7 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
 
   const isOutOfArea = quoteError?.code === 'OUT_OF_SERVICE_AREA';
   const outOfAreaData = isOutOfArea ? (quoteError?.data as unknown as OutOfAreaData | undefined) : undefined;
+  const walletBalance = Number(walletInfo?.balance ?? '0');
 
   const submitLead = async (): Promise<void> => {
     if (!/^[6-9]\d{9}$/.test(leadPhone)) return;
@@ -215,6 +229,21 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
         </Pressable>
       </View>
 
+      {/* FIX H1: Wallet toggle UI */}
+      {walletBalance > 0 ? (
+        <View style={styles.walletCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.walletLabel}>{hi.checkout.walletLabel}</Text>
+            <Text style={styles.walletBalance}>{hi.checkout.walletBalance}: <Money value={walletInfo?.balance ?? '0'} size={t.sm} /></Text>
+          </View>
+          <Switch
+            value={useWallet}
+            onValueChange={setUseWallet}
+            trackColor={{ true: colors.g500, false: colors.line }}
+          />
+        </View>
+      ) : null}
+
       <Text style={styles.section}>{hi.checkout.couponLabel}</Text>
       <View style={styles.couponRow}>
         <View style={{ flex: 1 }}>
@@ -230,7 +259,7 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
           fullWidth={false}
         />
       </View>
-      {appliedCoupon && quote ? <Text style={styles.couponApplied}>✅ {hi.checkout.couponApplied}</Text> : null}
+      {appliedCoupon && quote ? <Text style={styles.couponApplied}>{hi.checkout.couponApplied}</Text> : null}
       {couponError ? <Text style={styles.couponErrorText}>{couponError}</Text> : null}
 
       {quote?.needsPrescription ? (
@@ -239,7 +268,7 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
           {(prescriptions ?? []).map((p) => (
             <Pressable key={p.id} style={[styles.rxRow, prescriptionId === p.id && styles.rxRowActive]} onPress={() => setPrescriptionId(p.id)} disabled={p.status === 'REJECTED'}>
               <Text style={styles.rxText}>
-                पर्ची #{p.id} · {hi.prescriptions.status[p.status]}
+                #{p.id} · {hi.prescriptions.status[p.status]}
               </Text>
             </Pressable>
           ))}
@@ -329,6 +358,9 @@ const styles = StyleSheet.create({
   methodChipActive: { borderColor: colors.g600, backgroundColor: colors.g100 },
   methodText: { fontWeight: '600', color: colors.ink2 },
   methodTextActive: { color: colors.g700 },
+  walletCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.md, padding: space[3], marginTop: space[3], borderWidth: 1, borderColor: colors.g200 },
+  walletLabel: { fontSize: t.sm, fontWeight: '700', color: colors.ink },
+  walletBalance: { fontSize: t.xs, color: colors.ink3, marginTop: 2 },
   couponRow: { flexDirection: 'row', gap: space[2], alignItems: 'flex-start' },
   couponApplied: { color: colors.g700, fontWeight: '600', fontSize: t.sm, marginTop: space[1] },
   couponErrorText: { color: colors.danger, fontSize: t.sm, marginTop: space[1] },

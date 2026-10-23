@@ -1,17 +1,19 @@
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
-const path = require('node:path');
+const path = require('path');
 
-// `@fb/shared-types` lives outside apps/mobile (npm workspaces layout) — Metro must be told
-// to follow the symlink/relative package and to resolve its single copy of node_modules.
-const sharedTypesRoot = path.resolve(__dirname, '../../packages/shared-types');
 const projectRoot = __dirname;
-const workspaceRoot = path.resolve(__dirname, '../..');
+const monorepoRoot = path.resolve(projectRoot, '../..');
 
-/** @type {import('metro-config').MetroConfig} */
 const config = {
-  watchFolders: [sharedTypesRoot, workspaceRoot],
+  watchFolders: [
+    monorepoRoot,
+    path.resolve(monorepoRoot, 'packages/shared-types'),
+  ],
   resolver: {
-    nodeModulesPaths: [path.resolve(projectRoot, 'node_modules'), path.resolve(workspaceRoot, 'node_modules')],
+    nodeModulesPaths: [
+      path.resolve(projectRoot, 'node_modules'),
+      path.resolve(monorepoRoot, 'node_modules'),
+    ],
     disableHierarchicalLookup: false,
   },
 };

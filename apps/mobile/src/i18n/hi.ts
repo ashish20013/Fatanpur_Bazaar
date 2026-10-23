@@ -172,6 +172,8 @@ export const hi = {
     paymentMethod: 'भुगतान का तरीका',
     cod: 'कैश ऑन डिलीवरी',
     upi: 'UPI (तुरंत भुगतान)',
+    walletLabel: 'वॉलेट से भुगतान',
+    walletBalance: 'बैलेंस',
     itemsTotal: 'सामान का कुल',
     deliveryFee: 'डिलीवरी फीस',
     visitingCharge: 'आने का चार्ज',
@@ -258,6 +260,11 @@ export const hi = {
     markAllRead: 'सब पढ़ा हुआ मानें',
     permissionTitle: 'ऑर्डर की जानकारी पाने के लिए सूचनाएं चालू करें',
     permissionEnable: 'चालू करें',
+    // FIX: missing time-ago strings used by Notifications screen
+    justNow: 'अभी-अभी',
+    minutesAgo: (n: number) => `${n} मिनट पहले`,
+    hoursAgo: (n: number) => `${n} घंटे पहले`,
+    daysAgo: (n: number) => `${n} दिन पहले`,
   },
   profile: {
     title: 'प्रोफ़ाइल',

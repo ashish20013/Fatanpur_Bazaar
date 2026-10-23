@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AppState, type AppStateStatus } from 'react-native';
 import type { MeResponse } from '@fb/shared-types';
 import { AuthApi } from '../services/auth';
-import { onUnauthorized, restoreTokens } from '../services/api';
+import { api, onUnauthorized, restoreTokens } from '../services/api';
 import { connectSocket, disconnectSocket } from '../services/socket';
 import { registerDeviceToken } from '../services/fcm';
 
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     bootstrapped.current = true;
     void (async () => {
       const hadTokens = await restoreTokens();
-      // §10 non-negotiable: role is ALWAYS re-verified against the server on cold start —
+      // A5 non-negotiable: role is ALWAYS re-verified against the server on cold start —
       // never trusted from anything cached locally.
       if (hadTokens) await loadMe();
       else setStatus('unauthenticated');
@@ -79,6 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     setStatus('authenticated');
     connectSocket();
     void registerDeviceToken();
+    // A11 FIX (M11): merge guest cart into user cart right after login
+    try { await api.post('/cart/merge', {}); } catch { /* best-effort — guest cart may be empty */ }
     return me;
   }, []);
 

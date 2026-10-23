@@ -12,6 +12,7 @@ import { ListRowSkeleton } from '../../components/Skeleton';
 import { colors, radius, space, type as t } from '../../theme/tokens';
 import { hi } from '../../i18n/hi';
 import { CONFIG } from '../../config';
+import { APP_VERSION } from '../../constants';
 
 type Props = CompositeScreenProps<BottomTabScreenProps<CustomerTabParamList, 'Profile'>, NativeStackScreenProps<CustomerStackParamList>>;
 
@@ -189,7 +190,7 @@ export default function ProfileScreen({ navigation }: Props): React.JSX.Element 
 
       <View style={{ height: space[6] }} />
       <Button label={hi.profile.logout} onPress={doLogout} variant="danger" />
-      <Text style={styles.version}>{hi.profile.version} 1.0.0</Text>
+      <Text style={styles.version}>{hi.profile.version} {APP_VERSION}</Text>
     </ScrollView>
   );
 }

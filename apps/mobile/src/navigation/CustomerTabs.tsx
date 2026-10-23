@@ -18,6 +18,8 @@ import OrderTrackingScreen from '../screens/customer/OrderTracking';
 import WalletScreen from '../screens/customer/Wallet';
 import PrescriptionsScreen from '../screens/customer/Prescriptions';
 import ProfileScreen from '../screens/customer/Profile';
+// FIX H2: Add Notifications screen
+import NotificationsScreen from '../screens/customer/Notifications';
 
 export type CustomerStackParamList = {
   Tabs: undefined;
@@ -29,6 +31,8 @@ export type CustomerStackParamList = {
   OrderTracking: { orderNumber: string };
   Wallet: undefined;
   Prescriptions: undefined;
+  // FIX H2: Notifications route
+  Notifications: undefined;
 };
 export type CustomerTabParamList = {
   Home: undefined;
@@ -85,6 +89,8 @@ export function CustomerNavigator(): React.JSX.Element {
       <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} options={{ title: hi.tracking.title }} />
       <Stack.Screen name="Wallet" component={WalletScreen} options={{ title: hi.wallet.title }} />
       <Stack.Screen name="Prescriptions" component={PrescriptionsScreen} options={{ title: hi.prescriptions.title }} />
+      {/* FIX H2: Notifications screen added to stack */}
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: hi.notifications.title }} />
     </Stack.Navigator>
   );
 }

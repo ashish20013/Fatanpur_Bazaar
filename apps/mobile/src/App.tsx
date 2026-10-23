@@ -5,19 +5,32 @@ import { AuthProvider } from './store/auth';
 import { CartProvider } from './store/cart';
 import { TrackingProvider } from './store/tracking';
 import { RootNavigator } from './navigation/RootNavigator';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { NetworkBanner } from './components/NetworkBanner';
 import { colors } from './theme/tokens';
 
+/**
+ * Root component — order matters: ErrorBoundary outermost, then providers, then navigation.
+ * NavigationContainer is inside RootNavigator (not here) to avoid double-wrapping.
+ */
 export default function App(): React.JSX.Element {
   return (
-    <SafeAreaProvider>
-      <StatusBar backgroundColor={colors.card} barStyle="dark-content" />
-      <AuthProvider>
-        <TrackingProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={colors.surface}
+          translucent={false}
+        />
+        <AuthProvider>
           <CartProvider>
-            <RootNavigator />
+            <TrackingProvider>
+              <NetworkBanner />
+              <RootNavigator />
+            </TrackingProvider>
           </CartProvider>
-        </TrackingProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

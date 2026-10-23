@@ -1,20 +1,24 @@
 {
-  "extends": "../../packages/config/tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2021",
-    "lib": ["ES2023"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "react-native",
-    "types": ["react-native", "@types/react"],
-    "allowJs": false,
+    "target": "esnext",
+    "module": "commonjs",
+    "lib": ["es2022"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
     "noEmit": true,
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
-    }
+      "@fb/shared-types": ["../../packages/shared-types/src"],
+      "@fb/shared-types/*": ["../../packages/shared-types/src/*"]
+    },
+    "types": ["react-native"]
   },
-  "include": ["src", "index.js", "app.json"],
+  "include": ["src/**/*", "index.js"],
   "exclude": ["node_modules", "android", "ios"]
 }

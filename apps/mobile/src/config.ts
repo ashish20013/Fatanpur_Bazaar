@@ -13,4 +13,6 @@ export const CONFIG = {
   socketUrl: API_BASE_URL,
   socketPath: Config.SOCKET_PATH ?? '/socket',
   supportPhone: Config.SUPPORT_PHONE ?? '9616038670',
+  /** App version — synced with android/app/build.gradle versionName */
+  appVersion: Config.APP_VERSION ?? '1.0.0',
 } as const;

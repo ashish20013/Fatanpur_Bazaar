@@ -20,6 +20,11 @@ export const AuthApi = {
       platform: 'ANDROID',
     });
     await setTokens({ accessToken: res.accessToken, refreshToken: res.refreshToken ?? '' });
+
+    // FIX C2: Merge guest cart into logged-in user's cart (A11)
+    // This ensures items added before login are preserved.
+    await api.post('/cart/merge', {}).catch(() => undefined);
+
     return res;
   },
 
