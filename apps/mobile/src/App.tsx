@@ -7,6 +7,7 @@ import { TrackingProvider } from './store/tracking';
 import { RootNavigator } from './navigation/RootNavigator';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { NetworkBanner } from './components/NetworkBanner';
+import { NotificationBanner } from './components/NotificationBanner';
 import { colors } from './theme/tokens';
 
 /**
@@ -26,6 +27,7 @@ export default function App(): React.JSX.Element {
           <CartProvider>
             <TrackingProvider>
               <NetworkBanner />
+              <NotificationBanner />
               <RootNavigator />
             </TrackingProvider>
           </CartProvider>

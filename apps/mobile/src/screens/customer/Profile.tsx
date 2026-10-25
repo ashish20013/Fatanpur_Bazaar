@@ -184,6 +184,10 @@ export default function ProfileScreen({ navigation }: Props): React.JSX.Element 
         <Text style={styles.linkRowText}>{hi.profile.prescriptions}</Text>
         <Text style={styles.chevron}>›</Text>
       </Pressable>
+      <Pressable style={styles.linkRow} onPress={() => navigation.navigate('Notifications')}>
+        <Text style={styles.linkRowText}>{hi.profile.notifications}</Text>
+        <Text style={styles.chevron}>›</Text>
+      </Pressable>
 
       <Text style={styles.section}>{hi.profile.support}</Text>
       <Text style={styles.supportText}>📞 {CONFIG.supportPhone}</Text>
