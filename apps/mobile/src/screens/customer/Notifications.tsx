@@ -5,7 +5,8 @@ import type { CustomerStackParamList } from '../../navigation/CustomerTabs';
 import { api } from '../../services/api';
 import { Skeleton } from '../../components/Skeleton';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useT } from '../../store/lang';
+import type { AppDict } from '../../i18n/appEn';
 
 interface NotificationRow {
   id: number;
@@ -23,21 +24,22 @@ interface NotificationsPage {
   perPage: number;
 }
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, d: AppDict): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const min = Math.floor(diff / 60_000);
-  if (min < 1) return hi.notifications.justNow;
-  if (min < 60) return hi.notifications.minutesAgo(min);
+  if (min < 1) return d.notifications.justNow;
+  if (min < 60) return d.notifications.minutesAgo(min);
   const hr = Math.floor(min / 60);
-  if (hr < 24) return hi.notifications.hoursAgo(hr);
-  const d = Math.floor(hr / 24);
-  return hi.notifications.daysAgo(d);
+  if (hr < 24) return d.notifications.hoursAgo(hr);
+  const days = Math.floor(hr / 24);
+  return d.notifications.daysAgo(days);
 }
 
 /**
  * H2: Notifications screen — paginated list of user notifications with mark-read on tap.
  */
 export default function NotificationsScreen({ navigation }: NativeStackScreenProps<CustomerStackParamList, 'Notifications'>): React.JSX.Element {
+  const hi = useT();
   const [data, setData] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -119,7 +121,7 @@ export default function NotificationsScreen({ navigation }: NativeStackScreenPro
             <Text style={[styles.title, !item.isRead && styles.titleUnread]} numberOfLines={1}>
               {item.title}
             </Text>
-            <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
+            <Text style={styles.time}>{timeAgo(item.createdAt, hi)}</Text>
           </View>
           <Text style={styles.body} numberOfLines={2}>
             {item.body}

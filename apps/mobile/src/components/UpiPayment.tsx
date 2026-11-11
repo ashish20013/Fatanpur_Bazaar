@@ -7,7 +7,7 @@ import { Money } from './Money';
 import { Button } from './Button';
 import { Input } from './Input';
 import { colors, radius, space, type as t } from '../theme/tokens';
-import { hi } from '../i18n/hi';
+import { useT } from '../store/lang';
 
 /**
  * A17 UPI flow: intent button (opens whichever payment app is installed) + QR fallback for
@@ -15,6 +15,7 @@ import { hi } from '../i18n/hi';
  * ADMIN verifies it against the HDFC statement (payments.verify permission).
  */
 export function UpiPayment({ orderNumber, upi, onClaimed }: { orderNumber: string; upi: UpiDetails; onClaimed: () => void }): React.JSX.Element {
+  const hi = useT();
   const [utr, setUtr] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

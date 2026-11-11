@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Knex } from 'knex';
 import { ADMIN_ONLY_PERMISSIONS, ALL_PERMISSIONS, RIDER_GRANTABLE_PERMISSIONS, SCOPED_ADMIN_DEFAULT_PERMISSIONS, type Permission, type Role } from '@fb/shared-types';
 import { KNEX } from '../../database/knex.provider';
+import { ENV, type Env } from '../../config/config.module';
 import { AppError, conflict, forbidden, notFound } from '../../common/errors';
 import { localPhone } from '../../common/utils/phone';
 import { referralCode } from '../../common/utils/ids';
@@ -55,6 +56,7 @@ const ridersOnly = (): AppError => new AppError('FORBIDDEN', { reason: RIDERS_ON
 export class StaffService {
   constructor(
     @Inject(KNEX) private readonly db: Knex,
+    @Inject(ENV) private readonly env: Env,
     private readonly settings: SettingsService,
     private readonly audit: AuditService,
     private readonly identity: IdentityService,
@@ -91,6 +93,22 @@ export class StaffService {
       const g = grantablePermissions(actor.permissions, requested);
       if (g.denied.length) throw new AppError('BUSINESS_RULE', { reason: `ये अनुमतियाँ आप नहीं दे सकते: ${g.denied.join(', ')}` });
       grants = g.ok;
+    }
+
+    /*
+     * ⚠️ The Google Play review number can never become staff.
+     *
+     * Its login code is a PUBLISHED credential — it is typed into the Play Console for strangers
+     * to use — so promoting that number would hand the admin panel to anyone who can read the
+     * listing's review notes. The OTP path already refuses it a STAFF_LOGIN code; this is the
+     * other door, and it is shut here rather than in a comment telling the owner not to do it.
+     */
+    if (this.env.PLAY_REVIEW_PHONE && dto.phone === this.env.PLAY_REVIEW_PHONE) {
+      throw conflict(
+        'यह नंबर Google Play समीक्षा के लिए रखा गया है — इसे स्टाफ़ नहीं बनाया जा सकता',
+        undefined,
+        'This number is reserved for Google Play review access and cannot be made staff',
+      );
     }
 
     const phone = `91${dto.phone}`;

@@ -5,13 +5,17 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { AssignmentView, AvailableOrder } from '@fb/shared-types';
 import type { DeliveryStackParamList, DeliveryTabParamList } from '../../navigation/DeliveryStack';
-import { api, ApiError } from '../../services/api';
+import { api, ApiError, errText } from '../../services/api';
 import { LocationTracker } from '../../services/location';
 import { onSocketEvent } from '../../services/socket';
 import { Money } from '../../components/Money';
 import { Skeleton } from '../../components/Skeleton';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useScrollBottomPad } from '../../navigation/useScrollPad';
+import { useAppMode } from '../../navigation/RoleNavigator';
+import { useAuth } from '../../store/auth';
+import { Icon } from '../../components/Icon';
+import { en } from '../../i18n/en';
 
 type Props = CompositeScreenProps<BottomTabScreenProps<DeliveryTabParamList, 'Dashboard'>, NativeStackScreenProps<DeliveryStackParamList>>;
 
@@ -31,6 +35,9 @@ interface Earnings {
  * even if the precise stop() call at the end of a delivery was ever missed.
  */
 export default function DeliveryDashboardScreen({ navigation }: Props): React.JSX.Element {
+  const { user, logout } = useAuth();
+  const { switchTo, canSwitch } = useAppMode();
+  const bottomPad = useScrollBottomPad();
   const [earnings, setEarnings] = useState<Earnings | null>(null);
   const [pool, setPool] = useState<AvailableOrder[]>([]);
   const [claiming, setClaiming] = useState<string | null>(null);
@@ -56,7 +63,7 @@ export default function DeliveryDashboardScreen({ navigation }: Props): React.JS
         await loadPool();
         navigation.navigate('Assigned');
       } catch (e) {
-        setError(e instanceof ApiError ? e.messageHi : hi.delivery.claimTaken);
+        setError(errText(e, true));
         await loadPool(); // someone else likely took it — show the fresh pool
       } finally {
         setClaiming(null);
@@ -85,7 +92,7 @@ export default function DeliveryDashboardScreen({ navigation }: Props): React.JS
     try {
       setEarnings(await api.get<Earnings>('/delivery/earnings'));
     } catch (e) {
-      setError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong);
+      setError(errText(e, true));
     }
   }, []);
 
@@ -130,7 +137,7 @@ export default function DeliveryDashboardScreen({ navigation }: Props): React.JS
       await api.post('/delivery/duty', { available: value });
       setEarnings((prev) => (prev ? { ...prev, onDuty: value } : prev));
     } catch (e) {
-      setError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong);
+      setError(errText(e, true));
     } finally {
       setToggling(false);
     }
@@ -139,28 +146,28 @@ export default function DeliveryDashboardScreen({ navigation }: Props): React.JS
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={{ padding: space[4] }}
+      contentContainerStyle={{ padding: space[4], paddingBottom: bottomPad }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load().finally(() => setRefreshing(false)); }} colors={[colors.g700]} />}
     >
       <View style={styles.dutyCard}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.dutyTitle}>{earnings?.onDuty ? hi.delivery.onDuty : hi.delivery.offDuty}</Text>
-          <Text style={styles.dutyHelp}>{hi.delivery.dutyHelp}</Text>
+          <Text style={styles.dutyTitle}>{earnings?.onDuty ? en.delivery.onDuty : en.delivery.offDuty}</Text>
+          <Text style={styles.dutyHelp}>{en.delivery.dutyHelp}</Text>
         </View>
         <Switch value={Boolean(earnings?.onDuty)} onValueChange={(v) => void toggleDuty(v)} disabled={toggling || !earnings} trackColor={{ true: colors.g500, false: colors.line }} />
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {/* उपलब्ध ऑर्डर — broadcast pool. On duty par hi dikhta hai; pehle lene wala rider le leta hai. */}
+      {/* The broadcast pool. Shown only while on duty; the first rider to claim it gets the job. */}
       {earnings?.onDuty ? (
         <View style={styles.poolWrap}>
           <Text style={styles.sectionTitle}>
-            {hi.delivery.poolTitle}
+            {en.delivery.poolTitle}
             {pool.length ? `  (${pool.length})` : ''}
           </Text>
           {pool.length === 0 ? (
-            <Text style={styles.poolEmpty}>{hi.delivery.poolEmpty}</Text>
+            <Text style={styles.poolEmpty}>{en.delivery.poolEmpty}</Text>
           ) : (
             pool.map((o) => {
               const waitMin = Math.floor(o.waitingSec / 60);
@@ -168,15 +175,15 @@ export default function DeliveryDashboardScreen({ navigation }: Props): React.JS
                 <View key={o.orderNumber} style={styles.poolCard}>
                   <View style={styles.row}>
                     <Text style={styles.orderNo}>{o.orderNumber}</Text>
-                    <Text style={styles.wait}>{hi.delivery.waitMins(waitMin)}</Text>
+                    <Text style={styles.wait}>{en.delivery.waitMins(waitMin)}</Text>
                   </View>
                   <Text style={styles.village}>
-                    {[o.village, o.distanceKm !== null ? `${o.distanceKm} किमी` : null, hi.delivery.itemsN(o.itemCount)].filter(Boolean).join(' · ')}
+                    {[o.village, o.distanceKm !== null ? en.delivery.kmAway(o.distanceKm) : null, en.delivery.itemsN(o.itemCount)].filter(Boolean).join(' · ')}
                   </Text>
                   <View style={styles.row}>
-                    {Number(o.collectAmount) > 0 ? <Money value={o.collectAmount} size={t.md} /> : <Text style={styles.prepaid}>{hi.delivery.prepaidBadge}</Text>}
+                    {Number(o.collectAmount) > 0 ? <Money value={o.collectAmount} size={t.md} /> : <Text style={styles.prepaid}>{en.delivery.prepaidBadge}</Text>}
                     <Pressable style={[styles.claimBtn, claiming === o.orderNumber && styles.claimBtnBusy]} disabled={claiming === o.orderNumber} onPress={() => void claim(o.orderNumber)}>
-                      <Text style={styles.claimText}>{hi.delivery.claim}</Text>
+                      <Text style={styles.claimText}>{en.delivery.claim}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -190,12 +197,35 @@ export default function DeliveryDashboardScreen({ navigation }: Props): React.JS
         <Skeleton height={140} radius={radius.md} />
       ) : (
         <View style={styles.kpiGrid}>
-          <Kpi label={hi.delivery.todayEarning} value={<Money value={earnings.today.earning} size={t.xl} />} />
-          <Kpi label={hi.delivery.todayDeliveries} value={<Text style={styles.kpiNum}>{earnings.today.deliveries}</Text>} />
-          <Kpi label={hi.delivery.codInHand} value={<Money value={earnings.codInHand} size={t.lg} color={colors.warn} />} />
-          <Kpi label={hi.delivery.rating} value={<Text style={styles.kpiNum}>⭐ {earnings.rating}</Text>} />
+          <Kpi label={en.delivery.todayEarning} value={<Money value={earnings.today.earning} size={t.xl} />} />
+          <Kpi label={en.delivery.todayDeliveries} value={<Text style={styles.kpiNum}>{earnings.today.deliveries}</Text>} />
+          <Kpi label={en.delivery.codInHand} value={<Money value={earnings.codInHand} size={t.lg} color={colors.warn} />} />
+          <Kpi label={en.delivery.rating} value={<Text style={styles.kpiNum}>⭐ {earnings.rating}</Text>} />
         </View>
       )}
+
+      {/*
+        Who is signed in, and the way out.
+
+        ⚠️ A delivery partner had NO way to log out: the rider panel is four tabs and none of them
+        carried an account screen, so a phone handed to the next rider stayed signed in as the
+        last one — his earnings, his COD, his deliveries. The website's rider shell has both of
+        these in its sidebar foot, so they belong here.
+      */}
+      <View style={styles.account}>
+        <Text style={styles.who}>{user?.name || user?.phone}</Text>
+        <Text style={styles.whoRole}>{user?.role}</Text>
+        {canSwitch ? (
+          <Pressable style={styles.accountBtn} onPress={() => switchTo('customer')}>
+            <Icon name="building-store" size={16} color={colors.em700} />
+            <Text style={styles.accountBtnText}>Shop as a customer</Text>
+          </Pressable>
+        ) : null}
+        <Pressable style={styles.accountBtn} onPress={() => void logout()}>
+          <Icon name="logout" size={16} color={colors.danger} />
+          <Text style={[styles.accountBtnText, { color: colors.danger }]}>Log out</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -219,6 +249,21 @@ const styles = StyleSheet.create({
   kpiCard: { width: '47%', backgroundColor: colors.card, borderRadius: radius.md, padding: space[3] },
   kpiLabel: { fontSize: t.xs, color: colors.ink3, marginBottom: space[1] },
   kpiNum: { fontSize: t.xl, fontWeight: '700', color: colors.ink },
+  account: { marginTop: space[6], gap: space[2] },
+  who: { fontSize: t.md, fontWeight: '700', color: colors.ink },
+  whoRole: { fontSize: t.xs, color: colors.ink3, letterSpacing: 1, marginTop: -4 },
+  accountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space[2],
+    height: 46,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line2,
+    backgroundColor: colors.card,
+  },
+  accountBtnText: { color: colors.em800, fontWeight: '600', fontSize: t.base },
   poolWrap: { marginBottom: space[4], gap: space[2] },
   sectionTitle: { fontSize: t.lg, fontWeight: '700', color: colors.ink, marginBottom: space[1] },
   poolEmpty: { fontSize: t.sm, color: colors.ink3, backgroundColor: colors.card, borderRadius: radius.md, padding: space[3] },

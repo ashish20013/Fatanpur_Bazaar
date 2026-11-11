@@ -17,3 +17,14 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 
 rootProject.name = 'FatanpurBazaar'
 include ':app'
+
+/*
+ * ⚠️ Ye line RN 0.81 ke liye zaroori hai (template me bhi hai).
+ *
+ * Upar `pluginManagement` ke andar wala includeBuild sirf settings-plugin deta hai. Ye wala
+ * root project ke buildscript ko batata hai ki `com.facebook.react:react-native-gradle-plugin`,
+ * AGP aur Kotlin ki sahi version kahan se lein — isi wajah se build.gradle me un teeno ki
+ * version likhne ki zaroorat nahi padti. Iske bina build "Could not find
+ * com.android.tools.build:gradle:" kehkar ruk jaata hai.
+ */
+includeBuild('../node_modules/@react-native/gradle-plugin')

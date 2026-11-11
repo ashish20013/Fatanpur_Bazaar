@@ -100,8 +100,24 @@ export class AuthService {
      * so the API refuses to change it at all. Neither half is decorative — this line means the DB
      * value is ignored even if a row somehow holds one, and the lock means no row can be written.
      */
+    /*
+     * Google Play review access (see config/env.ts for why it lives in .env).
+     *
+     * ⚠️ Read what this does NOT do. It does not skip the OTP, does not accept any code, does not
+     * mark the session as special and does not touch the branch below for any other phone. It
+     * substitutes ONE value — the six-to-eight digits we would otherwise have drawn at random —
+     * for ONE configured number, and then falls through into exactly the same insert, the same
+     * bcrypt hash, the same expiry, the same attempt counter and the same single-use consume as
+     * every customer in the district. A reviewer still has to present the code; the only thing
+     * that changed is that the code is one Google already has instead of one in an SMS they will
+     * never receive.
+     *
+     * It also forces the courier path (`minimoth = null`), because MiniMoth owns its own codes: on
+     * that driver our fixed code would be checked against MiniMoth's, which has never heard of it.
+     */
+    const reviewCode = this.playReviewCode(phone, dto.purpose);
     const driverName = this.env.SMS_DRIVER;
-    const minimoth = driverName === 'minimoth' ? this.minimothProvider() : null;
+    const minimoth = reviewCode ? null : driverName === 'minimoth' ? this.minimothProvider() : null;
 
     /*
      * Two shapes of OTP, one table.
@@ -115,7 +131,7 @@ export class AuthService {
      * took the local path for a MiniMoth row could let a guessed code through. This way that
      * compare can only ever fail.
      */
-    const otp = minimoth ? null : loginOtp(); // crypto.randomInt
+    const otp = minimoth ? null : (reviewCode ?? loginOtp()); // crypto.randomInt
     const codeHash = await bcrypt.hash(otp ?? randomBytes(24).toString('hex'), BCRYPT_COST);
     const [otpId] = await this.db('otp_requests').insert({
       phone,
@@ -129,7 +145,14 @@ export class AuthService {
       ip_address: ip,
     });
     try {
-      if (minimoth) {
+      if (reviewCode) {
+        /*
+         * Nothing is sent. Google already has this code, and the number in .env is a placeholder
+         * that may well belong to a stranger — texting them our login code (and paying the
+         * courier for it) would be both a leak and a bill.
+         */
+        await this.audit.log({ actorId: null, action: 'login.play_review_otp', entityType: 'phone', entityId: maskPhone(phone), ip });
+      } else if (minimoth) {
         const challenge = await minimoth.send(localPhone(phone));
         await this.db('otp_requests').where({ id: otpId }).update({ provider_ref: challenge.ref });
       } else {
@@ -161,6 +184,32 @@ export class AuthService {
       // at our end must not spend one of the customer's three tries.
       throw new AppError('OTP_CHECK_FAILED');
     }
+  }
+
+  /**
+   * The fixed code for the Google Play review number, or null for everybody else.
+   *
+   * Every gate that makes this safe is in this one function, so there is a single place to read
+   * and a single place to break:
+   *  • both values must be configured (boot refuses half of it, and refuses a guessable code);
+   *  • the phone must match the configured one EXACTLY — no prefix, no range, no wildcard;
+   *  • purpose must be LOGIN. STAFF_LOGIN never gets the fixed code, so the review account can
+   *    never be the way someone walks into the admin panel;
+   *  • PLAY_REVIEW_UNTIL, once past, turns it off without a deploy.
+   * Null from here means the ordinary random code, which is what every other number gets.
+   */
+  private playReviewCode(phone: string, purpose: string): string | null {
+    const configured = this.env.PLAY_REVIEW_PHONE;
+    const code = this.env.PLAY_REVIEW_OTP;
+    if (!configured || !code) return null;
+    if (purpose !== 'LOGIN') return null;
+    if (phone !== `91${configured}`) return null;
+    const until = this.env.PLAY_REVIEW_UNTIL;
+    if (until && Date.now() > new Date(`${until}T23:59:59+05:30`).getTime()) {
+      Log.warn('auth.play_review_expired', { until });
+      return null;
+    }
+    return code;
   }
 
   /** Null when no key is configured — the caller then falls back to the courier path. */
@@ -244,7 +293,7 @@ export class AuthService {
 
   /**
    * THE ONLY public account-creation path. `role` is the literal CUSTOMER — never a variable,
-   * parameter or spread (ROLE_PERMISSION_MATRIX §0 layer 3; CI checks for DTO spreading).
+   * parameter or spread (ROLE_PERMISSION_MATRIX §0 layer 3; CI greps for `...dto`).
    */
   private async createCustomer(trx: Knex.Transaction, phone: string, name: string | undefined, referral: string | undefined, ip: string | null): Promise<UserRow> {
     let userId = 0;

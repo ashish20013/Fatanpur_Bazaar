@@ -1,6 +1,8 @@
 import { ERROR_CATALOG, formatMessage, type ErrorCode } from '@fb/shared-types';
 import { CONFIG } from '../config';
 import { hi } from '../i18n/hi';
+import { appEn } from '../i18n/appEn';
+import { currentLang } from '../store/lang';
 import { TokenStore, getOrCreateDeviceId, type StoredTokens } from './storage';
 
 /**
@@ -16,9 +18,42 @@ export class ApiError extends Error {
     readonly field?: string,
     readonly data?: Record<string, unknown>,
     readonly retryAfterSec?: number,
+    /** The server's own English wording, when it sent one. */
+    readonly messageEn?: string,
   ) {
     super(messageHi);
   }
+}
+
+/**
+ * What to show the person who hit this error.
+ *
+ * The staff and delivery panels are always English (the owner's rule, the same one the website
+ * follows) — those screens pass `english` explicitly, because a rider must not be shown
+ * "OTP गलत है। 2 कोशिश बची हैं।" on an otherwise English screen.
+ *
+ * On the customer side it follows the हिं | EN switch. ⚠️ This is not a component, so it reads
+ * `currentLang()` rather than the hook: an error sentence is produced at the moment it is
+ * thrown, and whatever the shopper is reading the shop in is what it has to be written in.
+ */
+export function errText(e: unknown, english = isEnglish()): string {
+  const fallback = english ? appEn.common.somethingWrong : hi.common.somethingWrong;
+  if (e instanceof ApiError) return (english ? (e.messageEn ?? e.messageHi) : e.messageHi) || fallback;
+  return fallback;
+}
+
+function isEnglish(): boolean {
+  return currentLang() === 'en';
+}
+
+/** The sentence for a dead connection, in whichever language is on screen. */
+function noInternet(): string {
+  return isEnglish() ? appEn.common.noInternet : hi.common.noInternet;
+}
+
+/** Fallback wording when the server sent nothing usable. */
+function somethingWrong(): string {
+  return isEnglish() ? appEn.common.somethingWrong : hi.common.somethingWrong;
 }
 
 interface PageMeta {
@@ -134,10 +169,14 @@ async function refreshOnce(): Promise<boolean> {
 function toApiError(status: number, json: Envelope<unknown> | null, retryAfterSec?: number): ApiError {
   if (json?.error) {
     const entry = ERROR_CATALOG[json.error.code] as { hi: string } | undefined;
-    const messageHi = json.error.message || (entry ? entry.hi : hi.common.somethingWrong);
-    return new ApiError(json.error.code, status, messageHi, json.error.field, json.error.data, retryAfterSec);
+    const messageHi = json.error.message || (entry ? entry.hi : somethingWrong());
+    // The envelope type in @fb/shared-types does not list messageEn, but the API does send it
+    // (ERROR_CATALOG has `en` for every code), so read it off the wire rather than assume.
+    const raw = json.error as { messageEn?: unknown };
+    const messageEn = typeof raw.messageEn === 'string' ? raw.messageEn : undefined;
+    return new ApiError(json.error.code, status, messageHi, json.error.field, json.error.data, retryAfterSec, messageEn);
   }
-  return new ApiError('UNKNOWN', status, hi.common.somethingWrong, undefined, undefined, retryAfterSec);
+  return new ApiError('UNKNOWN', status, somethingWrong(), undefined, undefined, retryAfterSec);
 }
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -145,7 +184,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   try {
     res = await rawFetch(path, opts);
   } catch {
-    throw new ApiError('NETWORK', 0, hi.common.noInternet);
+    throw new ApiError('NETWORK', 0, noInternet());
   }
   if (res.status === 401 && !opts.skipAuth && !opts.isRetry) {
     const ok = await refreshOnce();
@@ -173,7 +212,7 @@ async function requestPaged<T>(path: string, opts: RequestOptions = {}): Promise
   try {
     res = await rawFetch(path, opts);
   } catch {
-    throw new ApiError('NETWORK', 0, hi.common.noInternet);
+    throw new ApiError('NETWORK', 0, noInternet());
   }
   if (res.status === 401 && !opts.isRetry) {
     const ok = await refreshOnce();

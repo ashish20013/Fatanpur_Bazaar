@@ -4,12 +4,13 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { DeliveryStackParamList, DeliveryTabParamList } from '../../navigation/DeliveryStack';
-import { api, ApiError, type Paged } from '../../services/api';
+import { api, ApiError, type Paged, errText } from '../../services/api';
 import { Money } from '../../components/Money';
 import { EmptyState, ErrorState } from '../../components/EmptyState';
 import { ListRowSkeleton } from '../../components/Skeleton';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useScrollBottomPad } from '../../navigation/useScrollPad';
+import { en } from '../../i18n/en';
 
 type Props = CompositeScreenProps<BottomTabScreenProps<DeliveryTabParamList, 'History'>, NativeStackScreenProps<DeliveryStackParamList>>;
 
@@ -23,9 +24,10 @@ interface HistoryRow {
   village: string | null;
 }
 
-const STATUS_HI: Record<HistoryRow['status'], string> = { DELIVERED: 'डिलीवर हुआ', FAILED: 'नहीं हो पाया', CANCELLED: 'रद्द', REJECTED: 'मना किया' };
+
 
 export default function DeliveryHistoryScreen(_props: Props): React.JSX.Element {
+  const bottomPad = useScrollBottomPad();
   const [rows, setRows] = useState<HistoryRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -40,7 +42,7 @@ export default function DeliveryHistoryScreen(_props: Props): React.JSX.Element 
       setHasMore(r.meta.hasMore);
       setPage(1);
     } catch (e) {
-      setError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong);
+      setError(errText(e, true));
     }
   }, []);
 
@@ -64,21 +66,21 @@ export default function DeliveryHistoryScreen(_props: Props): React.JSX.Element 
 
   if (error && rows === null) return <ErrorState message={error} onRetry={() => void load()} />;
   if (rows === null) return <FlatList data={[1, 2, 3]} keyExtractor={(i) => String(i)} renderItem={() => <ListRowSkeleton />} />;
-  if (rows.length === 0) return <EmptyState icon="🕒" title="अभी कोई इतिहास नहीं" />;
+  if (rows.length === 0) return <EmptyState icon="🕒" title={en.delivery.historyEmpty} />;
 
   return (
     <FlatList
       data={rows}
       keyExtractor={(r) => String(r.id)}
-      contentContainerStyle={{ padding: space[4], gap: space[2] }}
+      contentContainerStyle={{ padding: space[4], gap: space[2], paddingBottom: bottomPad }}
       onEndReachedThreshold={0.4}
       onEndReached={() => void loadMore()}
       renderItem={({ item }) => (
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.orderNo}>{hi.orders.orderNo(item.orderNumber)}</Text>
+            <Text style={styles.orderNo}>{en.orders.orderNo(item.orderNumber)}</Text>
             <Text style={styles.meta}>
-              {item.status === 'DELIVERED' ? STATUS_HI.DELIVERED : STATUS_HI[item.status]} · {item.village ?? ''}
+              {en.assignment[item.status] ?? item.status} · {item.village ?? ''}
             </Text>
             {item.deliveredAt ? <Text style={styles.date}>{new Date(item.deliveredAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text> : null}
           </View>

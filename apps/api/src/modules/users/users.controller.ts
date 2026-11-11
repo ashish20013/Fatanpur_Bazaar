@@ -6,6 +6,7 @@ import type { AuthUser } from '../../common/types';
 import { UsersService, type AddressInput } from './users.service';
 
 /** NOTE: no `role` key — z.object strips it, so PATCH /users/me {role:'ADMIN'} is a no-op (matrix §0). */
+const DeleteAccountSchema = z.object({ reason: z.string().trim().max(255).optional() });
 const ProfileSchema = z.object({ name: z.string().trim().min(1).max(120).optional(), email: z.string().email().max(160).nullable().optional(), language: z.enum(['hi', 'en']).optional() });
 const AddressSchema = z
   .object({
@@ -65,5 +66,22 @@ export class UsersController {
   async remove(@CurrentUser() u: AuthUser, @Param('id', ParseIntPipe) id: number): Promise<{ ok: true }> {
     await this.users.deleteAddress(u.id, id);
     return { ok: true };
+  }
+
+  /*
+   * Account deletion (Google Play User Data policy).
+   *
+   * Two calls, not one: the app asks `delete-preview` first so the confirmation screen can say
+   * what will actually be lost, and only then posts `delete`. A single destructive endpoint behind
+   * one button is how people lose wallet money they did not know they had.
+   */
+  @Get('delete-preview')
+  deletePreview(@CurrentUser() u: AuthUser): Promise<unknown> {
+    return this.users.deletionPreview(u.id);
+  }
+
+  @Post('delete')
+  deleteAccount(@CurrentUser() u: AuthUser, @Body(new ZodPipe(DeleteAccountSchema)) b: z.infer<typeof DeleteAccountSchema>): Promise<{ deleted: true }> {
+    return this.users.deleteOwnAccount(u.id, b.reason ?? null);
   }
 }

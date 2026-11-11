@@ -7,7 +7,7 @@ import { Money } from '../../components/Money';
 import { EmptyState, ErrorState } from '../../components/EmptyState';
 import { ListRowSkeleton } from '../../components/Skeleton';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useT } from '../../store/lang';
 
 interface WalletTxn {
   id: number;
@@ -21,6 +21,7 @@ interface WalletTxn {
 }
 
 export default function WalletScreen(_props: NativeStackScreenProps<CustomerStackParamList, 'Wallet'>): React.JSX.Element {
+  const hi = useT();
   const [balance, setBalance] = useState<string | null>(null);
   const [items, setItems] = useState<WalletTxn[] | null>(null);
   const [error, setError] = useState<string | null>(null);

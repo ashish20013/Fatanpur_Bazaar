@@ -7,7 +7,7 @@ import { LocationTracker } from '../../services/location';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { colors, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { en } from '../../i18n/en';
 
 const MAX_ATTEMPTS = 3;
 
@@ -30,7 +30,7 @@ export default function CompleteDeliveryScreen({ route, navigation }: NativeStac
       await LocationTracker.stop();
       navigation.popToTop();
     } catch (e) {
-      const err = e instanceof ApiError ? e : new ApiError('UNKNOWN', 0, hi.common.somethingWrong);
+      const err = e instanceof ApiError ? e : new ApiError('UNKNOWN', 0, en.common.somethingWrong);
       setError(err.messageHi);
       setOtp('');
       if (err.code === 'DELIVERY_OTP_LOCKED') {
@@ -47,20 +47,20 @@ export default function CompleteDeliveryScreen({ route, navigation }: NativeStac
   return (
     <View style={styles.screen}>
       <Text style={styles.icon}>✅</Text>
-      <Text style={styles.title}>{hi.orders.orderNo(orderNumber)}</Text>
-      <Text style={styles.ask}>{hi.delivery.otpAsk}</Text>
+      <Text style={styles.title}>{en.orders.orderNo(orderNumber)}</Text>
+      <Text style={styles.ask}>{en.delivery.otpAsk}</Text>
       <Input
         value={otp}
         onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 4))}
-        placeholder={hi.delivery.otpPlaceholder}
+        placeholder={en.delivery.otpPlaceholder}
         keyboardType="number-pad"
         maxLength={4}
         editable={!locked}
         error={error ?? undefined}
       />
-      {!locked && attemptsLeft < MAX_ATTEMPTS ? <Text style={styles.attemptsLeft}>{attemptsLeft} कोशिश बची हैं</Text> : null}
+      {!locked && attemptsLeft < MAX_ATTEMPTS ? <Text style={styles.attemptsLeft}>{en.delivery.attemptsLeft(attemptsLeft)}</Text> : null}
       <View style={{ height: space[4] }} />
-      <Button label={hi.delivery.complete} onPress={() => void complete()} loading={submitting} disabled={otp.length !== 4 || locked} />
+      <Button label={en.delivery.complete} onPress={() => void complete()} loading={submitting} disabled={otp.length !== 4 || locked} />
     </View>
   );
 }

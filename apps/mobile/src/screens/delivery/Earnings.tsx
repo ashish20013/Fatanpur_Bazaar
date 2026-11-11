@@ -4,12 +4,13 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { DeliveryStackParamList, DeliveryTabParamList } from '../../navigation/DeliveryStack';
-import { api, ApiError } from '../../services/api';
+import { api, ApiError, errText } from '../../services/api';
 import { Money } from '../../components/Money';
 import { EmptyState, ErrorState } from '../../components/EmptyState';
 import { ListRowSkeleton } from '../../components/Skeleton';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useScrollBottomPad } from '../../navigation/useScrollPad';
+import { en } from '../../i18n/en';
 
 type Props = CompositeScreenProps<BottomTabScreenProps<DeliveryTabParamList, 'Earnings'>, NativeStackScreenProps<DeliveryStackParamList>>;
 
@@ -29,6 +30,7 @@ interface WalletTxn {
 }
 
 export default function DeliveryEarningsScreen(_props: Props): React.JSX.Element {
+  const bottomPad = useScrollBottomPad();
   const [summary, setSummary] = useState<EarningsSummary | null>(null);
   const [items, setItems] = useState<WalletTxn[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export default function DeliveryEarningsScreen(_props: Props): React.JSX.Element
       setSummary(s);
       setItems(w.items);
     } catch (e) {
-      setError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong);
+      setError(errText(e, true));
     }
   }, []);
 
@@ -57,28 +59,28 @@ export default function DeliveryEarningsScreen(_props: Props): React.JSX.Element
           <ListRowSkeleton />
         ) : (
           <View style={styles.kpiGrid}>
-            <Kpi label={hi.wallet.balance} value={<Money value={summary.walletBalance} size={t.xl} />} />
-            <Kpi label={hi.delivery.todayEarning} value={<Money value={summary.today.earning} size={t.lg} />} />
-            <Kpi label={hi.delivery.codInHand} value={<Money value={summary.codInHand} size={t.lg} color={colors.warn} />} />
-            <Kpi label={hi.delivery.totalDeliveries} value={<Text style={styles.kpiNum}>{summary.totalDeliveries}</Text>} />
+            <Kpi label={en.wallet.balance} value={<Money value={summary.walletBalance} size={t.xl} />} />
+            <Kpi label={en.delivery.todayEarning} value={<Money value={summary.today.earning} size={t.lg} />} />
+            <Kpi label={en.delivery.codInHand} value={<Money value={summary.codInHand} size={t.lg} color={colors.warn} />} />
+            <Kpi label={en.delivery.totalDeliveries} value={<Text style={styles.kpiNum}>{summary.totalDeliveries}</Text>} />
           </View>
         )}
       </View>
 
-      <Text style={styles.historyTitle}>{hi.wallet.history}</Text>
+      <Text style={styles.historyTitle}>{en.wallet.history}</Text>
       {items === null ? (
         <FlatList data={[1, 2, 3]} keyExtractor={(i) => String(i)} renderItem={() => <ListRowSkeleton />} />
       ) : items.length === 0 ? (
-        <EmptyState icon="👛" title={hi.wallet.empty} />
+        <EmptyState icon="👛" title={en.wallet.empty} />
       ) : (
         <FlatList
           data={items}
           keyExtractor={(i) => String(i.id)}
-          contentContainerStyle={{ padding: space[4], gap: space[2] }}
+          contentContainerStyle={{ padding: space[4], gap: space[2], paddingBottom: bottomPad }}
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.source}>{hi.wallet.sourceLabel[item.source] ?? item.source}</Text>
+                <Text style={styles.source}>{en.wallet.sourceLabel[item.source] ?? item.source}</Text>
                 <Text style={styles.date}>{new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
               </View>
               <Money value={item.amount} size={t.md} color={item.type === 'CREDIT' ? colors.g700 : colors.danger} />

@@ -15,8 +15,25 @@ import { clearQueuedPings, getQueuedPings, queueLocationPing } from './storage';
  *  - DeviceBattery: reads the OS battery level (RN core ships no battery API).
  */
 const { FGLocationService, DeviceBattery } = NativeModules as {
-  FGLocationService?: { start: (title: string, text: string) => void; stop: () => void };
-  DeviceBattery?: { getBatteryLevel: () => Promise<number> };
+  /**
+   * ⚠️ Both methods are promise-returning and take NO arguments — see
+   * android/app/src/main/java/com/fatanpurbazaar/app/FGLocationServiceModule.kt. The notification's
+   * own title and text live in FGLocationService.kt, in Hindi, where Android needs them.
+   *
+   * This was declared as `start(title, text)` and called with two strings, which Android refused
+   * with "FGLocationService.start got 4 arguments, expected 2" — a red crash screen the moment a
+   * rider pressed Accept, which is the single action the whole delivery side depends on. A
+   * synchronous try/catch could not have caught it either, because the failure comes back as a
+   * rejected promise.
+   */
+  FGLocationService?: { start: () => Promise<boolean>; stop: () => Promise<boolean> };
+  /**
+   * ⚠️ The native method is `getLevel` and answers 0–100, or -1 when Android will not say
+   * (DeviceBatteryModule.kt). This was declared as `getBatteryLevel`, which does not exist — so
+   * the call threw, the catch below swallowed it, and the battery saver never once engaged. A
+   * rider on 8% kept getting high-accuracy GPS every 15 seconds until the phone died mid-round.
+   */
+  DeviceBattery?: { getLevel: () => Promise<number> };
 };
 
 const NORMAL_INTERVAL_MS = 15_000;
@@ -70,12 +87,9 @@ class LocationTrackerImpl {
     const granted = await requestLocationPermission();
     if (!granted) throw new Error('LOCATION_PERMISSION_DENIED');
     this.assignmentId = assignmentId;
-    try {
-      FGLocationService?.start('फतनपुर बाज़ार', 'डिलीवरी लोकेशन शेयर हो रही है');
-    } catch {
-      // Native module missing in this build — location still works, just without the
-      // persistent notification; android/README.md documents wiring it in properly.
-    }
+    // Native module missing in this build, or the service refused to start → location still
+    // works, just without the persistent notification. Never let it take down the screen.
+    await FGLocationService?.start().catch(() => undefined);
     await this.checkBattery();
     this.beginWatch();
     this.batteryTimer = setInterval(() => void this.checkBattery(), BATTERY_CHECK_MS);
@@ -89,11 +103,7 @@ class LocationTrackerImpl {
     this.assignmentId = null;
     if (this.batteryTimer) clearInterval(this.batteryTimer);
     this.batteryTimer = null;
-    try {
-      FGLocationService?.stop();
-    } catch {
-      // see start() — safe to ignore if the native module isn't linked
-    }
+    await FGLocationService?.stop().catch(() => undefined);
   }
 
   private beginWatch(): void {
@@ -114,7 +124,9 @@ class LocationTrackerImpl {
   private async checkBattery(): Promise<void> {
     let level: number | null = null;
     try {
-      level = (await DeviceBattery?.getBatteryLevel()) ?? null;
+      const raw = await DeviceBattery?.getLevel();
+      // -1 means Android did not answer; that is "unknown", not "empty".
+      level = raw === undefined || raw < 0 ? null : raw;
     } catch {
       level = null; // module not linked — assume fine rather than needlessly degrading accuracy
     }

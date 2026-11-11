@@ -5,7 +5,8 @@ import { api, ApiError } from '../services/api';
 import { requestLocationPermission } from '../services/location';
 import Geolocation from 'react-native-geolocation-service';
 import { colors, layout, radius, space, type as t } from '../theme/tokens';
-import { hi } from '../i18n/hi';
+import { useName, useT } from '../store/lang';
+import { Icon } from './Icon';
 import { Skeleton } from './Skeleton';
 
 interface PickerResponse {
@@ -33,6 +34,8 @@ export function VillagePicker({
   onSelect: (village: VillageOption) => void;
   onNotListed: () => void;
 }): React.JSX.Element {
+  const pick = useName();
+  const hi = useT();
   const [query, setQuery] = useState('');
   const [data, setData] = useState<PickerResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -99,7 +102,18 @@ export function VillagePicker({
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={styles.sheet}>
         <View style={styles.handle} />
-        <Text style={styles.title}>{hi.village.title}</Text>
+        {/*
+          A close button, not just the backdrop. The sheet covers most of the screen, and the
+          only ways out were tapping the strip of dimmed page above it or Android's back gesture
+          — neither of which is visible. Somebody who opened the list to look at it has to be
+          able to put it away.
+        */}
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{hi.village.title}</Text>
+          <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel={hi.common.close} style={styles.close}>
+            <Icon name="x" size={20} color={colors.ink2} />
+          </Pressable>
+        </View>
         {data?.showSearch ? (
           <TextInput
             value={query}
@@ -131,14 +145,16 @@ export function VillagePicker({
             renderItem={({ item }) => (
               <Pressable style={styles.row} onPress={() => onSelect(item)}>
                 <Text style={styles.rowDot}>{pinned.has(item.id) ? '📍' : '●'}</Text>
+                {/*
+                  ⚠️ No distance here, by the owner's decision. "6.3 किमी" next to a village name
+                  reads as a judgement on whether the shop will come — and it is not even the
+                  thing that decides: the active village list is (A8.3 rule 1, "village list
+                  hamesha jeetti hai"). The number only invited the wrong question.
+                  The server still sends it; the admin village screen is where it belongs.
+                */}
                 <Text style={styles.rowName} numberOfLines={1}>
-                  {item.nameHi || item.name}
+                  {pick(item.name, item.nameHi)}
                 </Text>
-                {item.distanceKm !== null ? (
-                  <Text style={styles.rowDistance}>
-                    {item.distanceKm.toFixed(1)} {hi.common.km}
-                  </Text>
-                ) : null}
               </Pressable>
             )}
             ListFooterComponent={
@@ -158,7 +174,9 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(6,32,24,0.4)' },
   sheet: { backgroundColor: colors.card, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: '80%', paddingHorizontal: space[4], paddingTop: space[2], paddingBottom: space[6] },
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.line, alignSelf: 'center', marginBottom: space[3] },
-  title: { fontSize: t.lg, fontWeight: '700', color: colors.ink, marginBottom: space[3] },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[3] },
+  title: { flex: 1, fontSize: t.lg, fontWeight: '700', color: colors.ink, marginBottom: space[3] },
+  close: { height: 36, width: 36, alignItems: 'center', justifyContent: 'center', marginBottom: space[3] },
   search: { height: layout.tapTarget, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: space[4], fontSize: t.md, marginBottom: space[2], backgroundColor: colors.surface },
   gpsRow: { paddingVertical: space[3] },
   gpsText: { color: colors.g700, fontWeight: '600', fontSize: t.base },
@@ -167,7 +185,6 @@ const styles = StyleSheet.create({
   rowDot: { fontSize: t.sm },
   rowDotOutline: { fontSize: t.sm, color: colors.ink3 },
   rowName: { flex: 1, fontSize: t.md, color: colors.ink, fontWeight: '500' },
-  rowDistance: { fontSize: t.sm, color: colors.ink3 },
   notListedRow: { marginTop: space[2], borderBottomWidth: 0 },
   notListedText: { flex: 1, fontSize: t.base, color: colors.ink2, fontStyle: 'italic' },
   errorText: { color: colors.danger, textAlign: 'center', paddingVertical: space[6] },

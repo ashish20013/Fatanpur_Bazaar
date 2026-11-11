@@ -12,7 +12,7 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Skeleton } from '../../components/Skeleton';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useT } from '../../store/lang';
 
 interface AddressRow {
   id: number;
@@ -41,9 +41,11 @@ interface WalletInfo {
 
 /** A12/A14: this screen never trusts its own math — every total shown comes from POST /orders/quote. */
 export default function CheckoutScreen({ navigation }: NativeStackScreenProps<CustomerStackParamList, 'Checkout'>): React.JSX.Element {
+  const hi = useT();
   const { cart, clear } = useCart();
   const [mode, setMode] = useState<'form' | 'add-address'>('form');
   const [addresses, setAddresses] = useState<AddressRow[] | null>(null);
+  const [addressError, setAddressError] = useState<string | null>(null);
   const [addressId, setAddressId] = useState<number | null>(null);
   const [method, setMethod] = useState<PaymentMethod>('COD');
   const [couponInput, setCouponInput] = useState('');
@@ -63,10 +65,24 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
   const [couponError, setCouponError] = useState<string | null>(null);
   const idemKey = useRef(newIdempotencyKey());
 
+  /**
+   * ⚠️ A failed load must never look like "you have no addresses".
+   *
+   * This used to be an uncaught `void loadAddresses()`: if the call failed — a token refresh
+   * racing the request, a dropped packet on 3G — `addresses` stayed null and checkout showed a
+   * loading skeleton for ever, or offered to add a first address to somebody whose address has
+   * been saved on this shop's website for months. Both read as "the app lost my address".
+   */
   const loadAddresses = useCallback(async () => {
-    const rows = await api.get<AddressRow[]>('/users/me/addresses');
-    setAddresses(rows);
-    setAddressId((prev) => prev ?? rows.find((r) => r.isDefault)?.id ?? rows[0]?.id ?? null);
+    setAddressError(null);
+    try {
+      const rows = await api.get<AddressRow[]>('/users/me/addresses');
+      setAddresses(rows);
+      setAddressId((prev) => prev ?? rows.find((r) => r.isDefault)?.id ?? rows[0]?.id ?? null);
+    } catch (e) {
+      setAddresses(null);
+      setAddressError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong);
+    }
   }, []);
 
   useEffect(() => {
@@ -192,7 +208,12 @@ export default function CheckoutScreen({ navigation }: NativeStackScreenProps<Cu
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: space[4] }}>
       <Text style={styles.section}>{hi.checkout.deliverTo}</Text>
-      {addresses === null ? (
+      {addressError ? (
+        <Pressable style={styles.addBox} onPress={() => void loadAddresses()}>
+          <Text style={styles.addrLine}>{addressError}</Text>
+          <Text style={styles.addBoxText}>{hi.common.retry}</Text>
+        </Pressable>
+      ) : addresses === null ? (
         <Skeleton height={72} radius={radius.md} />
       ) : addresses.length === 0 ? (
         <Pressable style={styles.addBox} onPress={() => setMode('add-address')}>

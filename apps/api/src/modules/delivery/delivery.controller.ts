@@ -29,6 +29,23 @@ export class DeliveryController {
     return this.delivery.availablePool();
   }
   /** Rider takes an order himself — no admin step. First tap wins (race-safe). */
+  /**
+   * "नहीं, मैं नहीं ले सकता" on the incoming-order card.
+   *
+   * Ends the ringing for THIS rider only — the order stays in the pool for everyone else. When
+   * the last eligible rider declines, the alert module escalates to the admin immediately rather
+   * than letting the shop wait out the timer.
+   */
+  @Post('decline/:orderNumber')
+  @HttpCode(200)
+  decline(
+    @Param('orderNumber') orderNumber: string,
+    @Body(new ZodPipe(z.object({ reason: z.string().max(255).optional() }))) b: { reason?: string },
+    @CurrentUser() u: AuthUser,
+  ): Promise<unknown> {
+    return this.delivery.declinePool(orderNumber, u, b.reason ?? '');
+  }
+
   @Post('claim/:orderNumber')
   @HttpCode(200)
   claim(@Param('orderNumber') no: string, @CurrentUser() u: AuthUser, @Req() req: AppRequest): Promise<unknown> {

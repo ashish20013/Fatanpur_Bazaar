@@ -4,13 +4,15 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/RootNavigator';
 import { useAuth } from '../../store/auth';
 import { ApiError } from '../../services/api';
+import { navigationRef } from '../../navigation/ref';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { colors, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useT } from '../../store/lang';
 
 /** A3: OTP verify (+ implicit registration for a brand-new phone). Single input, paste-friendly. */
 export default function OtpScreen({ route, navigation }: NativeStackScreenProps<AuthStackParamList, 'Otp'>): React.JSX.Element {
+  const hi = useT();
   const { phone, resendAfter } = route.params;
   const { verifyOtp, sendOtp } = useAuth();
   const [otp, setOtp] = useState('');
@@ -32,8 +34,21 @@ export default function OtpScreen({ route, navigation }: NativeStackScreenProps<
     setError(null);
     setLoading(true);
     try {
-      await verifyOtp(phone, otp, name.trim() || undefined);
-      // Success flips auth status → RootNavigator switches to RoleNavigator on its own.
+      const { isNewUser } = await verifyOtp(phone, otp, name.trim() || undefined);
+      /*
+       * Say where to go, rather than hoping a re-render lands somewhere sensible.
+       *
+       * `reset` and not `navigate`: the login screens must leave the stack behind them, so the
+       * back button from the shop does not walk back into an OTP form for a session that
+       * already exists.
+       *
+       * A brand-new account goes to the address screen; anybody who already shops here — on the
+       * website or in the app — goes straight to the goods. They have a profile and an address
+       * on file already and must never be asked for them a second time.
+       */
+      if (navigationRef.isReady()) {
+        navigationRef.reset({ index: 0, routes: [{ name: isNewUser ? 'Setup' : 'Tabs' }] });
+      }
     } catch (e) {
       setError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong);
     } finally {

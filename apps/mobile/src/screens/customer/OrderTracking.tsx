@@ -13,11 +13,13 @@ import { Button } from '../../components/Button';
 import { Skeleton } from '../../components/Skeleton';
 import { ErrorState } from '../../components/EmptyState';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useName, useT } from '../../store/lang';
 
 const STALE_MS = 90_000;
 
 export default function OrderTrackingScreen({ route, navigation }: NativeStackScreenProps<CustomerStackParamList, 'OrderTracking'>): React.JSX.Element {
+  const pick = useName();
+  const hi = useT();
   const { orderNumber } = route.params;
   const { refresh: refreshCart } = useCart();
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -178,7 +180,7 @@ export default function OrderTrackingScreen({ route, navigation }: NativeStackSc
         {order.items.map((it) => (
           <View key={it.id} style={styles.billRow}>
             <Text style={[styles.billItemName, it.isRemoved && styles.billItemRemoved]} numberOfLines={1}>
-              {it.nameHi || it.name} × {it.finalQuantity ?? it.quantity}
+              {pick(it.name, it.nameHi)} × {it.finalQuantity ?? it.quantity}
             </Text>
             <Money value={it.finalLineTotal ?? it.lineTotal} size={t.sm} />
           </View>

@@ -257,6 +257,23 @@ export class TrackingGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   emitPoolNew(e: { orderNumber: string; village: string | null; collectAmount: string; itemCount: number; etaMinutes: number; distanceKm: number | null }): void {
     this.server?.to('ops:pool').to('ops:orders').emit('pool.order.new', e);
   }
+  /**
+   * Alert events (order alerts, escalation) to one of the ops rooms.
+   *
+   * Generic on purpose: the alert module needs half a dozen event names and they all go to a
+   * room that already exists, so one method beats six near-identical ones. The room is chosen
+   * by the caller from the fixed set below — never from anything a client sent, because a room
+   * name taken from a request is how one shop's staff ends up listening to another's.
+   */
+  emitAlert(room: 'ops:pool' | 'ops:orders' | 'ops:delivery', event: string, payload: Record<string, unknown>): void {
+    this.server?.to(room).emit(event, payload);
+  }
+
+  /** The same, to specific people — used when the owner picks individual recipients. */
+  emitAlertToUsers(userIds: number[], event: string, payload: Record<string, unknown>): void {
+    for (const id of userIds) this.server?.to(`user:${id}`).emit(event, payload);
+  }
+
   /** A pool order was taken (claimed/assigned) or is no longer available → drop it from every list. */
   emitPoolGone(orderNumber: string, by: string | null): void {
     this.server?.to('ops:pool').to('ops:orders').emit('pool.order.gone', { orderNumber, by });

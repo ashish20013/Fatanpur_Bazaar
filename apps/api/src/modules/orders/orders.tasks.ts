@@ -1,6 +1,7 @@
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 import type { Knex } from 'knex';
 import { KNEX } from '../../database/knex.provider';
+import { ENV, type Env } from '../../config/config.module';
 import { Log } from '../../common/logger';
 import { CronService } from '../jobs/cron.service';
 import { QueueService } from '../jobs/queue.service';
@@ -13,6 +14,7 @@ import { OrderStateService, SYSTEM_ACTOR } from './order-state.service';
 export class OrdersTasks implements OnModuleInit {
   constructor(
     @Inject(KNEX) private readonly db: Knex,
+    @Inject(ENV) private readonly env: Env,
     private readonly cron: CronService,
     private readonly queue: QueueService,
     private readonly settings: SettingsService,
@@ -22,6 +24,7 @@ export class OrdersTasks implements OnModuleInit {
 
   onModuleInit(): void {
     this.cron.register({ name: 'orders:auto-cancel', schedule: { every: true }, run: () => this.autoCancel() });
+    this.cron.register({ name: 'play-review:cleanup', schedule: { every: true }, run: () => this.playReviewCleanup() });
     this.queue.register('order.review_request', (p) => this.reviewRequest(String(p.orderNumber)));
   }
 
@@ -49,6 +52,43 @@ export class OrdersTasks implements OnModuleInit {
         n++;
       } catch (e) {
         Log.warn('orders.auto_cancel_failed', { orderNumber: no, err: String(e) });
+      }
+    }
+    return `cancelled ${n}/${stale.length}`;
+  }
+
+  /**
+   * Test orders from the Google Play review account cancel themselves.
+   *
+   * A reviewer needs to reach the end of the checkout — Play rejects an app whose main flow stops
+   * at a wall — but nobody should be packing vegetables for a stranger testing a listing. So the
+   * order is real for as long as the reviewer is looking at it, and then it is gone.
+   *
+   * ⚠️ It cancels through `changeStatus`, not with an UPDATE. That one call is what returns the
+   * stock, rolls the coupon back, refunds the wallet and writes the status log (A15 §11); an
+   * UPDATE here would quietly leave the shop short of stock it never sold.
+   *
+   * Only ever touches orders that are still waiting — nothing picked up or delivered, and nothing
+   * belonging to anyone else.
+   */
+  async playReviewCleanup(): Promise<string> {
+    const phone = this.env.PLAY_REVIEW_PHONE;
+    const ttl = this.env.PLAY_REVIEW_ORDER_TTL_MIN;
+    if (!phone || ttl <= 0) return 'off';
+    const stale = (await this.db('orders as o')
+      .join('users as u', 'u.id', 'o.customer_id')
+      .where('u.phone', `91${phone}`)
+      .whereIn('o.status', ['PENDING_PAYMENT', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'SCHEDULED'])
+      .where('o.placed_at', '<', this.db.raw('NOW() - INTERVAL ? MINUTE', [ttl]))
+      .limit(50)
+      .pluck('o.order_number')) as string[];
+    let n = 0;
+    for (const no of stale) {
+      try {
+        await this.state.changeStatus(no, 'CANCELLED', SYSTEM_ACTOR, { note: 'Google Play review test order — apne aap radd' });
+        n++;
+      } catch (e) {
+        Log.warn('orders.play_review_cleanup_failed', { orderNumber: no, err: String(e) });
       }
     }
     return `cancelled ${n}/${stale.length}`;

@@ -14,7 +14,13 @@ export type OtpSendDto = z.infer<typeof OtpSendSchema>;
  */
 export const OtpVerifySchema = z.object({
   phone,
-  otp: z.string().trim().regex(/^\d{6}$/, 'OTP 6 अंकों का होता है'),
+  /*
+   * Six for every customer; up to eight so the Google Play review code can be longer than a real
+   * OTP (config/env.ts). Widening the accepted LENGTH weakens nothing on its own — the code is
+   * still compared with bcrypt against the one row we issued, and a seven- or eight-digit entry
+   * from an ordinary customer simply fails that compare like any other wrong code.
+   */
+  otp: z.string().trim().regex(/^\d{6,8}$/, 'OTP 6 अंकों का होता है'),
   name: z.string().trim().min(1).max(100).optional(),
   referralCode: z.string().trim().toUpperCase().regex(/^[A-Z2-9]{6,12}$/).optional(),
   deviceId: z.string().max(64).optional(),

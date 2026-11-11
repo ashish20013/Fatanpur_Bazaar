@@ -5,7 +5,7 @@ import { colors, radius, shadow1, space, type as t } from '../theme/tokens';
 import { Money } from './Money';
 import { Button } from './Button';
 import { QtyStepper } from './QtyStepper';
-import { hi } from '../i18n/hi';
+import { useName, useT, useUnitLabel } from '../store/lang';
 
 /**
  * §9 product card spec: 1:1 image, discount ribbon, 2-line name, unit, price+strike-MRP,
@@ -22,14 +22,17 @@ export function ProductCard({
   quantityInCart?: number;
   onPress: () => void;
   onAdd: () => void;
-  onQtyChange: (q: number) => void;
+  onQtyChange: (q: number) => Promise<void> | void;
 }): React.JSX.Element {
+  const pick = useName();
+  const unitOf = useUnitLabel();
+  const hi = useT();
   const showRibbon = product.discountPercent > 0;
   return (
     <Pressable onPress={onPress} style={styles.card}>
       <View style={styles.imageWrap}>
         {product.image ? (
-          <Image source={{ uri: product.image.urlSm, width: product.image.width, height: product.image.height }} style={styles.image} resizeMode="cover" accessibilityLabel={product.image.alt} />
+          <Image source={{ uri: product.image.urlSm, width: product.image.width, height: product.image.height }} style={styles.image} resizeMode="contain" accessibilityLabel={product.image.alt} />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]} />
         )}
@@ -45,10 +48,10 @@ export function ProductCard({
         ) : null}
       </View>
       <Text style={styles.name} numberOfLines={2}>
-        {product.nameHi || product.name}
+        {pick(product.name, product.nameHi)}
       </Text>
       <Text style={styles.unit}>
-        {product.unitValue} {product.unit}
+        {unitOf(product.unitValue, product.unit)}
       </Text>
       <View style={styles.priceRow}>
         <Money value={product.price} size={t.lg} />

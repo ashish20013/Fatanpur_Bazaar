@@ -67,6 +67,41 @@ const schema = z
     SMS_SENDER_ID: z.string().optional(),
     SMS_TEMPLATE_ID: z.string().optional(),
 
+    /*
+     * Google Play review access.
+     *
+     * The app has no password — a reviewer who cannot receive our SMS cannot get past the login
+     * screen, and Play rejects an app its reviewers cannot open. So ONE phone number, named here,
+     * gets a FIXED code instead of a random one. Everything else about that login is the ordinary
+     * flow: same table, same bcrypt compare, same 5-minute expiry, same three attempts, same
+     * single-use consume, same rate limits.
+     *
+     * ⚠️ Why .env and not a setting: this decides who can enter the shop without an SMS. A row in
+     * `settings` is editable from the admin panel by anyone who gets in there, and would travel in
+     * a database dump. This cannot be turned on by accident, cannot be turned on remotely, and the
+     * owner switches it off by deleting two lines and restarting.
+     *
+     * ⚠️ It is ONE number. There is no universal code, no "any phone with this OTP", no bypass
+     * flag. Every other customer in the country is unaffected, and the review number itself still
+     * has to present a code it would take ~50 million guesses to find — with three attempts per
+     * code and five verifies per fifteen minutes.
+     */
+    PLAY_REVIEW_PHONE: z
+      .string()
+      .regex(/^[6-9]\d{9}$/, 'PLAY_REVIEW_PHONE must be a 10-digit Indian mobile number')
+      .optional(),
+    PLAY_REVIEW_OTP: z
+      .string()
+      .regex(/^\d{6,8}$/, 'PLAY_REVIEW_OTP must be 6 to 8 digits')
+      .optional(),
+    /** ISO date (YYYY-MM-DD). After it, the fixed code stops working — no redeploy needed. */
+    PLAY_REVIEW_UNTIL: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'PLAY_REVIEW_UNTIL must look like 2026-12-31')
+      .optional(),
+    /** Minutes before a review order cancels itself. 0 disables the cleanup. */
+    PLAY_REVIEW_ORDER_TTL_MIN: z.coerce.number().int().min(0).max(1440).default(10),
+
     FIREBASE_SERVICE_ACCOUNT: z.string().optional(),
     VAPID_PUBLIC_KEY: z.string().optional(),
     VAPID_PRIVATE_KEY: z.string().optional(),
@@ -128,6 +163,23 @@ const schema = z
     }
     if (e.EDGE_SECRET && [e.JWT_SECRET, e.JWT_REFRESH_SECRET, e.APP_SECRET].includes(e.EDGE_SECRET)) {
       ctx.addIssue({ code: 'custom', message: 'EDGE_SECRET must be different from the JWT and APP secrets' });
+    }
+    /*
+     * Half-configured review access is the dangerous shape, so it is a boot error either way.
+     *
+     * A phone with no code would be a number nobody can ever log in as; a code with no phone would
+     * be a code looking for a phone. Both say someone edited .env half-way and stopped.
+     */
+    if (Boolean(e.PLAY_REVIEW_PHONE) !== Boolean(e.PLAY_REVIEW_OTP)) {
+      ctx.addIssue({ code: 'custom', message: 'PLAY_REVIEW_PHONE and PLAY_REVIEW_OTP must be set together, or neither' });
+    }
+    /*
+     * ⚠️ A guessable review code is worse than none: it is a published, permanent way into one
+     * real account. 123456 and 11111111 are the first two things anyone tries, so the app refuses
+     * to start on them rather than running with a code the owner believes is secret.
+     */
+    if (e.PLAY_REVIEW_OTP && (/^(\d)\1*$/.test(e.PLAY_REVIEW_OTP) || '0123456789'.includes(e.PLAY_REVIEW_OTP) || '9876543210'.includes(e.PLAY_REVIEW_OTP))) {
+      ctx.addIssue({ code: 'custom', message: 'PLAY_REVIEW_OTP is guessable (repeated or sequential digits) — use 8 random digits' });
     }
   })
   .transform((e) => ({

@@ -86,8 +86,10 @@ export const en: Dict = {
     perOrderMax: (n: number): string => `Maximum ${n} per order`,
     description: 'Details',
     weighed: 'Sold by weight — if it weighs less, your bill is reduced',
-    rxBlock: 'A doctor\u2019s prescription is required — upload a photo of it while ordering; the medicine is sent only after that.',
-    rxHint: 'Make sure the prescription is readable — the medicine name and the doctor\u2019s signature must be clear.',
+    rxBlock:
+      'A doctor\u2019s prescription is required — upload a photo of it while ordering; the medicine is sent only after that.',
+    rxHint:
+      'Make sure the prescription is readable — the medicine name and the doctor\u2019s signature must be clear.',
   },
 
   cart: {
@@ -116,7 +118,8 @@ export const en: Dict = {
   },
 
   checkout: {
-    closedNow: (t: string): string => `The shop is closed right now — we will still take your order, and it will reach you by ${t} in the morning.`,
+    closedNow: (t: string): string =>
+      `The shop is closed right now — we will still take your order, and it will reach you by ${t} in the morning.`,
     title: 'Confirm your order',
     address: 'Address',
     addAddress: '+ Add a new address',
@@ -142,9 +145,9 @@ export const en: Dict = {
   address: {
     village: 'Village / area',
     line1: 'House / mohalla',
-    line1Hint: 'e.g. Ward 4, near Hanuman temple',
+    line1Hint: '',
     landmark: 'Landmark',
-    landmarkHint: 'Write a recognisable spot — in villages this is the real address',
+    landmarkHint: '',
     phone: 'Mobile',
     phoneHint: 'For the delivery',
     name: 'Who should receive it',
@@ -444,7 +447,8 @@ export const en: Dict = {
   hero: {
     kicker: 'Raniganj · Fatanpur · Pratapgarh',
     title: 'Your village bazaar, now at your door',
-    sub: (w: string): string => `From Fatanpur Bazaar to your home in ${w.replace('मिनट', 'min')} — groceries, fruit & vegetables, sweets, even doctors and vehicle hire.`,
+    sub: (w: string): string =>
+      `From Fatanpur Bazaar to your home in ${w.replace('मिनट', 'min')} — groceries, fruit & vegetables, sweets, even doctors and vehicle hire.`,
     p1: 'Bazaar prices',
     p2: 'Weighs less? Pay less',
     p3: 'Cash on delivery / UPI',
@@ -460,7 +464,7 @@ export const en: Dict = {
     how1: 'Tap “Buy” on an item, choose quantity',
     how2: 'Log in with mobile number + OTP',
     how3: 'Pick your village, fill the address',
-    how4: 'Cash or UPI — and the timer starts',
+    how4: 'Choose payment method — Cash or UPI',
     services: 'Book a service',
   },
 
@@ -472,7 +476,8 @@ export const en: Dict = {
     take: 'Use my current location',
     taking: 'Getting your location…',
     taken: (m: number): string => `Location found (±${m} m)`,
-    weak: (m: number): string => `Location not precise (±${m} m) — step outside and retry, or drop a pin on the map`,
+    weak: (m: number): string =>
+      `Location not precise (±${m} m) — step outside and retry, or drop a pin on the map`,
     denied: 'Location permission denied — drop a pin on the map or write the route',
     map: 'Pick the spot on a map',
     mapHint: 'Drag the map until the pin sits on the house',
@@ -485,22 +490,23 @@ export const en: Dict = {
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     attribution: '© OpenStreetMap',
-    originOnly: 'Noted — this location is kept only to show where the order was placed from. The goods come to the address you chose.',
+    originOnly:
+      'Noted — this location is kept only to show where the order was placed from. The goods come to the address you chose.',
     originSaved: (m: number): string => `Your current position was recorded (±${m} m)`,
     needAnswer: 'First tell us where you are ordering from',
   },
 
   addr2: {
-    guardian: 'Father / husband / guardian name',
-    guardianHint: 'e.g. Ramlal Yadav — this is how houses are found in the village',
+    guardian: '',
+    guardianHint: '',
     altPhone: 'Alternate mobile',
     altPhoneHint: 'We call this if the first number is unreachable',
     district: 'District',
     pincode: 'PIN code',
     directions: 'How to reach',
-    directionsHint: 'e.g. From the main road go east, second lane, opposite the primary school',
+    directionsHint: '',
     note: 'Note for the delivery partner',
-    noteHint: 'e.g. Call before coming, dog at the gate',
+    noteHint: '',
     receiver: 'Receiver’s name',
     step1: 'Village',
     step2: 'House address',

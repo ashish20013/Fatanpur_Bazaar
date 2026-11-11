@@ -10,7 +10,7 @@ import { Button } from '../../components/Button';
 import { Skeleton } from '../../components/Skeleton';
 import { ErrorState } from '../../components/EmptyState';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useName, useT } from '../../store/lang';
 
 interface Slot {
   start: string;
@@ -29,6 +29,8 @@ function nextDays(n: number): { iso: string; label: string }[] {
 }
 
 export default function ServiceScreen({ route, navigation }: NativeStackScreenProps<CustomerStackParamList, 'Service'>): React.JSX.Element {
+  const pick = useName();
+  const hi = useT();
   const { slug } = route.params;
   const { addItem } = useCart();
   const [service, setService] = useState<ProductDetail | null>(null);
@@ -44,7 +46,7 @@ export default function ServiceScreen({ route, navigation }: NativeStackScreenPr
       .get<ProductDetail>(`/catalog/products/${slug}`)
       .then((p) => {
         setService(p);
-        navigation.setOptions({ title: p.nameHi || p.name });
+        navigation.setOptions({ title: pick(p.name, p.nameHi) });
       })
       .catch((e) => setError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,7 +65,7 @@ export default function ServiceScreen({ route, navigation }: NativeStackScreenPr
     if (!service || !selectedSlot) return;
     setBooking(true);
     try {
-      await addItem(service.id, 1); // TODO(cart.slot): CartService currently reads slot via /cart/items body — see ASSUMPTIONS.md
+      await addItem(service.id, 1, date, selectedSlot.start);
       setBooked(true);
     } catch (e) {
       setError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong);
@@ -83,7 +85,7 @@ export default function ServiceScreen({ route, navigation }: NativeStackScreenPr
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: space[4] }}>
-      <Text style={styles.name}>{service.nameHi || service.name}</Text>
+      <Text style={styles.name}>{pick(service.name, service.nameHi)}</Text>
       {service.description || service.descriptionHi ? <Text style={styles.description}>{service.descriptionHi || service.description}</Text> : null}
 
       <View style={styles.priceRow}>

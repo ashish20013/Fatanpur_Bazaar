@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Animated, StyleSheet, View } from 'react-native';
 import { colors, radius } from '../theme/tokens';
 
 /**
@@ -9,7 +9,28 @@ import { colors, radius } from '../theme/tokens';
  */
 export function Skeleton({ width = '100%', height = 16, radius: r = radius.sm, style }: { width?: number | `${number}%`; height?: number; radius?: number; style?: object }): React.JSX.Element {
   const opacity = useRef(new Animated.Value(0.5)).current;
+  const [still, setStill] = useState(false);
   useEffect(() => {
+    let live = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((on) => {
+      if (live) setStill(on);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  /*
+   * The pulse is an animation like any other, so "reduce motion" turns it off and leaves a
+   * plain grey block — which still does the skeleton's real job of showing where the content
+   * will land. ⚠️ It also matters that this loop can be stopped at all: `Animated.loop` with
+   * the native driver keeps running on the UI thread even for a tab that is off screen, so a
+   * screen left half-loaded in the background pulses for as long as the app is open.
+   */
+  useEffect(() => {
+    if (still) {
+      opacity.setValue(0.75);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
@@ -18,7 +39,7 @@ export function Skeleton({ width = '100%', height = 16, radius: r = radius.sm, s
     );
     loop.start();
     return () => loop.stop();
-  }, [opacity]);
+  }, [opacity, still]);
   return <Animated.View style={[{ width, height, borderRadius: r, backgroundColor: colors.line, opacity }, style]} />;
 }
 

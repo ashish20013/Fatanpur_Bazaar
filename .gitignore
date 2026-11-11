@@ -29,3 +29,9 @@ apps/mobile/ios/Pods/
 firebase-service-account*.json
 test-results/
 playwright-report/
+
+# Build ke log, purane backup, aur wo node_modules patch script jo RN 0.81 ke baad
+# zaroori nahi rahi (dono problem ab firebase.json aur package.json se theek hote hain).
+apps/mobile/android/build-output.txt
+_to_delete/
+apps/mobile/scripts/patch-native-modules.sh

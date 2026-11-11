@@ -71,7 +71,38 @@ export class OrderPlacementService {
     }
   }
 
+  /**
+   * Is this the Google Play review account?
+   *
+   * ⚠️ Decided from the user's own row, never from anything the client sent. The caller already
+   * checked that a review phone is configured at all, so for every ordinary shop this costs
+   * nothing: one `where id` lookup that only ever runs when the feature is switched on.
+   */
+  private async isPlayReviewUser(userId: number): Promise<boolean> {
+    const u = (await this.db('users').where({ id: userId }).first('phone')) as { phone: string } | undefined;
+    return Boolean(u && u.phone === `91${this.env.PLAY_REVIEW_PHONE}`);
+  }
+
   private async placeInner(userId: number, input: PlaceInput, idemKey: string): Promise<PlaceOrderResponse> {
+    /*
+     * The Google Play review account pays cash on delivery or not at all.
+     *
+     * ⚠️ UPI here is the owner's real HDFC number: the app shows a `upi://pay` intent and a QR
+     * that a reviewer in another country could scan and actually pay. A stranger testing a
+     * checkout must not be able to move real money into the shop's account, and a payment that
+     * arrives with no customer behind it is worse to unwind than a blocked button. Cash on
+     * delivery moves nothing until someone hands over goods, and those orders cancel themselves
+     * (`play-review:cleanup`).
+     *
+     * This is the only place the review account is treated differently in the whole order path,
+     * and it is a refusal, not a privilege.
+     */
+    if (input.paymentMethod !== 'COD' && this.env.PLAY_REVIEW_PHONE && (await this.isPlayReviewUser(userId))) {
+      throw new AppError('PAYMENT_METHOD_UNAVAILABLE', {
+        reason: 'समीक्षा खाते से सिर्फ़ "सामान मिलने पर नकद" (COD) चुनें',
+        reasonEn: 'The review account can only use Cash on Delivery',
+      });
+    }
     // 6. payment method availability
     if (input.paymentMethod === 'COD' && !(await this.settings.bool('cod_enabled', true))) throw new AppError('PAYMENT_METHOD_UNAVAILABLE');
     if (input.paymentMethod === 'UPI' && (!(await this.settings.bool('upi_enabled', true)) || !(await this.settings.str('upi_vpa')))) throw new AppError('PAYMENT_METHOD_UNAVAILABLE');

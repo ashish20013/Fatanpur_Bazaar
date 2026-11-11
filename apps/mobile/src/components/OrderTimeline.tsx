@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { ORDER_STATUS_LABEL_HI, TIMELINE, type OrderStatus, type OrderType } from '@fb/shared-types';
+import { ORDER_STATUS_LABEL_EN, ORDER_STATUS_LABEL_HI, TIMELINE, type OrderStatus, type OrderType } from '@fb/shared-types';
 import { colors, space, type as t } from '../theme/tokens';
 
 interface Step {
@@ -14,11 +14,15 @@ export function OrderTimeline({
   orderType,
   currentStatus,
   history,
+  english,
 }: {
   orderType: OrderType;
   currentStatus: OrderStatus;
   history: { status: OrderStatus; labelHi: string; at: string }[];
+  /** Staff panel labels (English, like the website's admin side). */
+  english?: boolean;
 }): React.JSX.Element {
+  const LABEL = english ? ORDER_STATUS_LABEL_EN : ORDER_STATUS_LABEL_HI;
   const happyPath = TIMELINE[orderType];
   const at = new Map(history.map((h) => [h.status, h.at]));
   const reachedIndex = happyPath.indexOf(currentStatus);
@@ -34,7 +38,7 @@ export function OrderTimeline({
             {i < steps.length - 1 ? <View style={[styles.line, step.done && styles.lineDone]} /> : null}
           </View>
           <View style={styles.textCol}>
-            <Text style={[styles.label, step.done && styles.labelDone]}>{ORDER_STATUS_LABEL_HI[step.status]}</Text>
+            <Text style={[styles.label, step.done && styles.labelDone]}>{LABEL[step.status]}</Text>
             {step.at ? <Text style={styles.time}>{new Date(step.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text> : null}
           </View>
         </View>
@@ -45,7 +49,7 @@ export function OrderTimeline({
             <View style={[styles.dot, styles.dotDanger]} />
           </View>
           <View style={styles.textCol}>
-            <Text style={[styles.label, styles.labelDanger]}>{ORDER_STATUS_LABEL_HI[currentStatus]}</Text>
+            <Text style={[styles.label, styles.labelDanger]}>{LABEL[currentStatus]}</Text>
           </View>
         </View>
       ) : null}

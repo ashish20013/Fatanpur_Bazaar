@@ -1,27 +1,33 @@
 buildscript {
     ext {
-        buildToolsVersion = "35.0.0"
+        buildToolsVersion = "36.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 35
-        targetSdkVersion = 35
+        // ⚠️ Google Play ne 31 August 2026 se API 36 zaroori kar diya hai — new apps aur
+        // updates dono ke liye. 35 par upload hi reject ho jaata hai.
+        compileSdkVersion = 36
+        targetSdkVersion = 36
         ndkVersion = "27.1.12297006"
-        kotlinVersion = "2.0.21"
+        kotlinVersion = "2.1.20"
     }
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.7.3")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
+        /*
+         * ⚠️ AGP aur react-native-gradle-plugin ki version yahan LIKHI NAHI jaati.
+         *
+         * Pehle yahan `com.android.tools.build:gradle:8.7.3` likha tha, aur plugin ke do
+         * pre-built JAR `classpath files(...)` se load kiye jaate the — wo JAR node_modules ke
+         * andar build output the, jo har `npm install` me ud jaate hain. RN 0.81 me plugin
+         * `settings.gradle` ke `includeBuild` se aata hai aur apni sahi AGP version khud laata
+         * hai, isliye version likhna ya JAR path dena dono galat hai.
+         */
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
         classpath("com.google.gms:google-services:4.4.2")
-        // react-native-gradle-plugin is loaded via includeBuild in settings.gradle
     }
 }
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
+apply plugin: "com.facebook.react.rootproject"

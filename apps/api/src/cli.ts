@@ -10,6 +10,7 @@ import { runMigrations } from './database/migrate';
  *   node dist/cli.js seed [--demo]           base data (+ demo users/orders)
  *   node dist/cli.js seed-admin --phone=9XXXXXXXXX --name="Ashish"   FIRST admin only (needs SETUP_TOKEN)
  *   node dist/cli.js set-role --phone=9XXXXXXXXX --role=ADMIN|SUPERVISOR|DELIVERY_BOY [--name="…"]   (needs SETUP_TOKEN)
+ *   node dist/cli.js play-review             prepare the Google Play review account + print the Console text
  *   node dist/cli.js cron                    the ONE hPanel cron entry (every 5 min)
  *   node dist/cli.js queue                   drain the job queue once
  *   node dist/cli.js vapid                   print a new Web Push VAPID key pair
@@ -76,6 +77,38 @@ async function main(): Promise<void> {
       const { setStaffRole } = await import('./database/seeds/set-role.js');
       const r = await setStaffRole(db, phone, role, arg('name'));
       console.log(`✅ ${phone}: ${r.from ?? 'new user'} → ${role} (#${r.id}). Old sessions revoked — log in again with OTP.`);
+    } finally {
+      await db.destroy();
+    }
+    return;
+  }
+  if (cmd === 'play-review') {
+    /*
+     * Prepares the account Google Play's reviewers log in as, and prints the text to paste into
+     * the Play Console. No SETUP_TOKEN gate: this creates an ordinary CUSTOMER and grants nothing
+     * — the thing that actually permits the login is PLAY_REVIEW_OTP in .env, which this cannot
+     * write. Without those two lines the account is just another customer who never gets an SMS.
+     */
+    if (!env.PLAY_REVIEW_PHONE || !env.PLAY_REVIEW_OTP) {
+      throw new Error('Set PLAY_REVIEW_PHONE and PLAY_REVIEW_OTP in .env first, then run this again.');
+    }
+    const db = createKnex(env);
+    try {
+      const { setupPlayReviewAccount } = await import('./database/seeds/play-review.js');
+      const r = await setupPlayReviewAccount(db, env.PLAY_REVIEW_PHONE);
+      console.log(`✅ review account ${r.created ? 'created' : 'already existed'} (#${r.userId}) · address #${r.addressId} in ${r.village}`);
+      console.log('\n──── paste this into Play Console → App access → All functionality ────\n');
+      console.log('Login method: mobile number + OTP (no password).');
+      console.log(`Mobile number: ${env.PLAY_REVIEW_PHONE}`);
+      console.log(`OTP / verification code: ${env.PLAY_REVIEW_OTP}`);
+      console.log('Steps: open the app → "लॉगिन" / Login → enter the mobile number above →');
+      console.log('  tap "OTP भेजें" (Send OTP) → enter the code above → tap "लॉगिन करें".');
+      console.log('Notes: this is a dedicated review account. No SMS is sent to it — the code above');
+      console.log('  is fixed for this one number. A delivery address is already saved, so Cart →');
+      console.log('  Checkout → Cash on Delivery can be completed. Online payment is disabled for');
+      console.log('  this account and its test orders cancel themselves automatically.');
+      if (env.PLAY_REVIEW_UNTIL) console.log(`Access valid until: ${env.PLAY_REVIEW_UNTIL}`);
+      console.log('\n──────────────────────────────────────────────────────────────────────\n');
     } finally {
       await db.destroy();
     }

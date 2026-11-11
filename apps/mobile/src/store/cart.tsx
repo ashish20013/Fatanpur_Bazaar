@@ -8,7 +8,8 @@ interface CartContextValue {
   loading: boolean;
   itemCount: number;
   refresh: () => Promise<void>;
-  addItem: (productId: number, quantity: number) => Promise<void>;
+  /** A SERVICE item must carry the slot the customer picked, or the API rejects the order (A11). */
+  addItem: (productId: number, quantity: number, slotDate?: string, slotStart?: string) => Promise<void>;
   setQty: (itemId: number, quantity: number) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
   clear: () => Promise<void>;
@@ -35,8 +36,8 @@ export function CartProvider({ children }: { children: React.ReactNode }): React
   }, [status]);
 
   const addItem = useCallback(
-    async (productId: number, quantity: number) => {
-      const v = await api.post<CartView>('/cart/items', { productId, quantity });
+    async (productId: number, quantity: number, slotDate?: string, slotStart?: string) => {
+      const v = await api.post<CartView>('/cart/items', { productId, quantity, slotDate, slotStart });
       setCart(v);
     },
     [],

@@ -3,7 +3,7 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 // react-native-config — loads .env into BuildConfig
-apply from: file("../node_modules/react-native-config/android/dotenv.gradle")
+apply from: file("../../node_modules/react-native-config/android/dotenv.gradle")
 
 /**
  * Release signing — reads from keystore.properties (git-ignored) if present.
@@ -26,11 +26,17 @@ if (keystorePropertiesFile.exists()) {
 react {
     // RN 0.76+ — Hermes is always on via the react plugin.
     // No manual hermesEnabled flag needed.
+    //
+    // ⚠️ Ye line RN 0.81 me zaroori hai: settings.gradle sirf libraries ki LIST banata hai
+    // (`autolinkLibrariesFromCommand`), aur ye unhe is app se JODTA hai. Iske bina naye plugin
+    // par koi bhi native library link nahi hoti.
+    autolinkLibrariesWithApp()
 }
 
 android {
     namespace "com.fatanpurbazaar.app"
     compileSdk rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
     ndkVersion rootProject.ext.ndkVersion
 
     defaultConfig {
@@ -73,6 +79,24 @@ android {
         }
     }
 
+    packaging {
+        /*
+         * ⚠️ `useLegacyPackaging = true` HATA DIYA GAYA — ye Play ki 16 KB requirement ko
+         * seedha todta tha.
+         *
+         * Legacy packaging native library ko APK ke andar ZIP me compress kar deti hai aur
+         * install ke waqt nikalti hai. 16 KB page size ke liye library ko APK me BINA compress,
+         * page-boundary par aligned hona padta hai, taki phone use seedha memory me map kar
+         * sake. Compressed library ki alignment ka koi matlab hi nahi rehta.
+         *
+         * AGP 8 ka default (false) hi sahi hai, isliye line hata di — likhna zaroori nahi.
+         */
+        // Transitive AAR me yahi service file do baar aa jaati hai; pehli le lo.
+        resources {
+            pickFirsts += ['META-INF/services/com.facebook.soloader.ExternalSoMapping']
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -86,14 +110,38 @@ android {
     }
 }
 
+/*
+ * ⚠️ androidx.core ka `resolutionStrategy.force 1.15.0` HATA DIYA GAYA.
+ * Wo compileSdk 35 + AGP 8.7.3 ke zamane ka pin tha. compileSdk 36 par 1.15.0 ko zabardasti
+ * rokne se naye AndroidX API resolve nahi hote. Version ab RN ka gradle plugin tay karta hai.
+ */
+
 dependencies {
-    // React Native (from node_modules)
+    // React Native (from node_modules — version resolved by RN Gradle plugin BOM)
     implementation("com.facebook.react:react-android")
-    // RN 0.76+ with react plugin — Hermes is always bundled, no conditional needed (M10 FIX)
     implementation("com.facebook.react:hermes-android")
 
     // AndroidX core (for NotificationCompat in FGLocationService)
-    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.core:core-ktx:1.17.0")
+
+    /*
+     * ⚠️ Yahan pehle har library ki `implementation project(':react-native-…')` line thi,
+     * kyunki purana pre-built-JAR wala setup autolinking nahi karta tha. RN 0.81 me
+     * `react { autolinkLibrariesWithApp() }` ye kaam khud karta hai, to wo saari line hata di
+     * gayi hain — warna ek hi library do baar add hoti hai.
+     */
+    /*
+     * The Firebase messaging SDK on the APP's own compile classpath.
+     *
+     * ⚠️ react-native-firebase already pulls this in, but as its own `implementation` dependency
+     * — which is not transitive — so `FirebaseMessagingService` cannot be subclassed from here
+     * without naming it. It has to be subclassed: a data-only push arriving while the app is
+     * terminated is handled by a native service or not at all, and that is precisely the case a
+     * delivery partner's alert has to survive. The version matches the one the plugin resolves,
+     * so nothing else moves.
+     */
+    implementation 'com.google.firebase:firebase-messaging:24.0.3'
+    // Draws the site's own Tabler icon paths and the coloured category art.
 }
 
 // Firebase — must be at the very bottom

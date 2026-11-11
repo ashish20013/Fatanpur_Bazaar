@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { StaffTabParamList } from '../../navigation/StaffStack';
-import { api, ApiError } from '../../services/api';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { api, ApiError, errText } from '../../services/api';
 import { useAuth } from '../../store/auth';
 import { Money } from '../../components/Money';
 import { Skeleton } from '../../components/Skeleton';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useScrollBottomPad } from '../../navigation/useScrollPad';
+import { en } from '../../i18n/en';
 
 interface RiderRow {
   id: number;
@@ -43,7 +42,8 @@ interface Board {
 }
 
 /** GET /admin/delivery/board + POST /admin/orders/:no/assign — Phase 1 manual assignment (A18). */
-export default function DeliveryBoardScreen(_props: BottomTabScreenProps<StaffTabParamList, 'DeliveryBoard'>): React.JSX.Element {
+export default function DeliveryBoardScreen(): React.JSX.Element {
+  const bottomPad = useScrollBottomPad();
   const { user } = useAuth();
   const canAssign = user?.role === 'ADMIN' || (user?.permissions ?? []).includes('delivery.assign');
   const [board, setBoard] = useState<Board | null>(null);
@@ -51,13 +51,16 @@ export default function DeliveryBoardScreen(_props: BottomTabScreenProps<StaffTa
   const [refreshing, setRefreshing] = useState(false);
   const [assigningOrder, setAssigningOrder] = useState<string | null>(null);
   const [assigning, setAssigning] = useState(false);
+  const [settling, setSettling] = useState<number | null>(null);
+  const [settlingFor, setSettlingFor] = useState<number | null>(null);
+  const [amount, setAmount] = useState('');
 
   const load = useCallback(async () => {
     setError(null);
     try {
       setBoard(await api.get<Board>('/admin/delivery/board'));
     } catch (e) {
-      setError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong);
+      setError(errText(e, true));
     }
   }, []);
 
@@ -80,15 +83,43 @@ export default function DeliveryBoardScreen(_props: BottomTabScreenProps<StaffTa
       setAssigningOrder(null);
       await load();
     } catch (e) {
-      Alert.alert(hi.common.somethingWrong, e instanceof ApiError ? e.messageHi : hi.common.somethingWrong);
+      Alert.alert(en.common.somethingWrong, errText(e, true));
     } finally {
       setAssigning(false);
     }
   };
 
+  /**
+   * Taking the day's cash off a rider — the same POST /admin/cod/settle the website's delivery
+   * board does. The site asks for the amount in a browser prompt; Android has no prompt, so the
+   * row opens an amount field instead.
+   *
+   * ⚠️ This reduces `cod_in_hand` and writes a cod_settlements row. It must never touch the
+   * rider's wallet, because that money was never credited there (A17).
+   */
+  const settle = async (r: RiderRow): Promise<void> => {
+    const n = Number(amount);
+    if (!Number.isFinite(n) || n <= 0) return;
+    if (n > Number(r.codInHand)) {
+      Alert.alert(en.staff.settleCod, en.staff.codTooMuch(r.codInHand));
+      return;
+    }
+    setSettling(r.id);
+    try {
+      await api.post('/admin/cod/settle', { riderId: r.id, amount: n.toFixed(2) });
+      setSettlingFor(null);
+      setAmount('');
+      await load();
+    } catch (e) {
+      Alert.alert(en.common.somethingWrong, errText(e, true));
+    } finally {
+      setSettling(null);
+    }
+  };
+
   if (!board) {
     return (
-      <ScrollView style={styles.screen} contentContainerStyle={{ padding: space[4] }}>
+      <ScrollView style={styles.screen} contentContainerStyle={{ padding: space[4], paddingBottom: bottomPad }}>
         <Skeleton height={160} radius={radius.md} />
       </ScrollView>
     );
@@ -97,25 +128,48 @@ export default function DeliveryBoardScreen(_props: BottomTabScreenProps<StaffTa
   const onDutyRiders = board.riders.filter((r) => Number(r.onDuty) === 1);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding: space[4] }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.g700]} />}>
+    <ScrollView style={styles.screen} contentContainerStyle={{ padding: space[4], paddingBottom: bottomPad }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.g700]} />}>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <Text style={styles.section}>{hi.staff.riders}</Text>
+      <Text style={styles.section}>{en.staff.riders}</Text>
       <View style={styles.card}>
         {board.riders.map((r) => (
-          <View key={r.id} style={styles.rowBetween}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.riderName}>{r.name}</Text>
-              <Text style={styles.riderMeta}>
-                {Number(r.onDuty) === 1 ? `🟢 ${hi.staff.onDutyLabel}` : `⚪ ${hi.delivery.offDuty}`} · {r.activeJobs} चालू
-              </Text>
+          <View key={r.id} style={{ gap: space[2] }}>
+            <View style={styles.rowBetween}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.riderName}>{r.name}</Text>
+                <Text style={styles.riderMeta}>
+                  {Number(r.onDuty) === 1 ? `🟢 ${en.staff.onDutyLabel}` : `⚪ ${en.delivery.offDuty}`} · {en.staff.activeN(r.activeJobs)}
+                </Text>
+              </View>
+              {/* Over ₹3,000 in a rider's pocket is the alert the owner wants to see (A17). */}
+              {Number(r.codInHand) > 0 ? <Money value={r.codInHand} size={t.sm} color={Number(r.codInHand) > 3000 ? colors.danger : colors.warn} /> : null}
+              {canAssign && Number(r.codInHand) > 0 ? (
+                <Pressable style={styles.codBtn} onPress={() => { setSettlingFor(settlingFor === r.id ? null : r.id); setAmount(r.codInHand); }}>
+                  <Text style={styles.codBtnText}>{en.staff.settleCod}</Text>
+                </Pressable>
+              ) : null}
             </View>
-            {Number(r.codInHand) > 0 ? <Money value={r.codInHand} size={t.sm} color={colors.warn} /> : null}
+            {settlingFor === r.id ? (
+              <View style={styles.rowBetween}>
+                <TextInput
+                  value={amount}
+                  onChangeText={setAmount}
+                  keyboardType="decimal-pad"
+                  placeholder={r.codInHand}
+                  placeholderTextColor={colors.ink3}
+                  style={styles.codInput}
+                />
+                <Pressable style={[styles.assignBtn, settling === r.id && { opacity: 0.6 }]} disabled={settling === r.id} onPress={() => void settle(r)}>
+                  <Text style={styles.assignBtnText}>{en.common.save}</Text>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
         ))}
       </View>
 
-      <Text style={styles.section}>{hi.staff.readyOrders}</Text>
+      <Text style={styles.section}>{en.staff.readyOrders}</Text>
       {board.ready.length === 0 ? (
         <Text style={styles.empty}>—</Text>
       ) : (
@@ -129,7 +183,7 @@ export default function DeliveryBoardScreen(_props: BottomTabScreenProps<StaffTa
               <Money value={o.total} size={t.sm} />
               {canAssign ? (
                 <Pressable style={styles.assignBtn} onPress={() => setAssigningOrder(o.orderNumber)}>
-                  <Text style={styles.assignBtnText}>तय करें</Text>
+                  <Text style={styles.assignBtnText}>{en.staff.assignPick}</Text>
                 </Pressable>
               ) : null}
             </View>
@@ -139,9 +193,9 @@ export default function DeliveryBoardScreen(_props: BottomTabScreenProps<StaffTa
 
       {assigningOrder ? (
         <View style={styles.card}>
-          <Text style={styles.riderName}>{hi.orders.orderNo(assigningOrder)} — कौन ले जाएगा?</Text>
+          <Text style={styles.riderName}>{en.staff.whoWillTake(en.orders.orderNo(assigningOrder))}</Text>
           {onDutyRiders.length === 0 ? (
-            <Text style={styles.empty}>कोई डिलीवरी पार्टनर ड्यूटी पर नहीं है</Text>
+            <Text style={styles.empty}>{en.staff.noRiderOnDuty}</Text>
           ) : (
             onDutyRiders.map((r) => (
               <Pressable key={r.id} style={styles.riderPickRow} onPress={() => void assign(r.id)} disabled={assigning}>
@@ -150,12 +204,12 @@ export default function DeliveryBoardScreen(_props: BottomTabScreenProps<StaffTa
             ))
           )}
           <Pressable onPress={() => setAssigningOrder(null)}>
-            <Text style={styles.cancelLink}>{hi.common.cancel}</Text>
+            <Text style={styles.cancelLink}>{en.common.cancel}</Text>
           </Pressable>
         </View>
       ) : null}
 
-      <Text style={styles.section}>{hi.staff.activeDeliveries}</Text>
+      <Text style={styles.section}>{en.staff.activeDeliveries}</Text>
       {board.active.length === 0 ? (
         <Text style={styles.empty}>—</Text>
       ) : (
@@ -168,7 +222,7 @@ export default function DeliveryBoardScreen(_props: BottomTabScreenProps<StaffTa
                   {a.rider} · {a.village ?? ''}
                 </Text>
               </View>
-              <Text style={[styles.liveTag, Number(a.isLive) === 1 ? styles.liveOn : styles.liveOff]}>{Number(a.isLive) === 1 ? hi.tracking.live : hi.tracking.stale}</Text>
+              <Text style={[styles.liveTag, Number(a.isLive) === 1 ? styles.liveOn : styles.liveOff]}>{Number(a.isLive) === 1 ? en.tracking.live : en.tracking.stale}</Text>
             </View>
           ))}
         </View>
@@ -191,6 +245,9 @@ const styles = StyleSheet.create({
   riderPickRow: { paddingVertical: space[3], borderBottomWidth: 1, borderBottomColor: colors.surface },
   riderPickText: { fontSize: t.base, color: colors.ink, fontWeight: '600' },
   cancelLink: { color: colors.danger, fontWeight: '600', marginTop: space[2] },
+  codBtn: { borderWidth: 1, borderColor: colors.line2, borderRadius: radius.sm, paddingHorizontal: space[2], paddingVertical: space[1] },
+  codBtnText: { color: colors.em800, fontWeight: '600', fontSize: t.xs },
+  codInput: { flex: 1, height: 44, borderWidth: 1, borderColor: colors.line2, borderRadius: radius.sm, backgroundColor: colors.card, paddingHorizontal: space[3], fontSize: t.body, color: colors.ink },
   liveTag: { fontSize: t.xs, fontWeight: '600', paddingHorizontal: space[2], paddingVertical: 2, borderRadius: radius.sm },
   liveOn: { color: colors.g700, backgroundColor: colors.g100 },
   liveOff: { color: colors.ink3, backgroundColor: colors.surface },

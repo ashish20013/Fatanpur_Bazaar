@@ -11,7 +11,7 @@ import { Money } from '../../components/Money';
 import { EmptyState, ErrorState } from '../../components/EmptyState';
 import { ListRowSkeleton } from '../../components/Skeleton';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useT } from '../../store/lang';
 
 type Props = CompositeScreenProps<BottomTabScreenProps<CustomerTabParamList, 'Orders'>, NativeStackScreenProps<CustomerStackParamList>>;
 
@@ -20,6 +20,7 @@ function fmtDate(iso: string): string {
 }
 
 export default function OrdersScreen({ navigation }: Props): React.JSX.Element {
+  const hi = useT();
   const [orders, setOrders] = useState<OrderSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);

@@ -19,6 +19,7 @@ import { RecordsCoreModule } from './modules/payments/payments-core.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { TrackingModule } from './modules/tracking/tracking.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
 import { DeliveryModule } from './modules/delivery/delivery.module';
 import { ServicesModule } from './modules/services/services.module';
 import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
@@ -62,6 +63,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     PaymentsModule,
     TrackingModule,
     DeliveryModule,
+    AlertsModule,
     ServicesModule,
     PrescriptionsModule,
     ReviewsModule,

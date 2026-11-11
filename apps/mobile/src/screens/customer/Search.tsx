@@ -5,17 +5,25 @@ import type { SearchResponse, ProductCard as ProductCardType } from '@fb/shared-
 import type { CustomerStackParamList } from '../../navigation/CustomerTabs';
 import { api, ApiError } from '../../services/api';
 import { useCart } from '../../store/cart';
-import { ProductCard } from '../../components/ProductCard';
+import { useBuy } from '../../hooks/useBuy';
+import { ProductTile } from '../../components/ProductTile';
 import { ListRowSkeleton } from '../../components/Skeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { colors, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useName, useT } from '../../store/lang';
+import { useSite } from '../../store/lang';
+import { useGridColumns } from '../../navigation/useGrid';
 
 /** A10 client side: debounce, ≥2 chars, zero-result → "tell us" demand capture. */
 export default function SearchScreen({ navigation }: NativeStackScreenProps<CustomerStackParamList, 'Search'>): React.JSX.Element {
-  const { cart, addItem, setQty } = useCart();
+  const cols = useGridColumns();
+  const pick = useName();
+  const hi = useT();
+  const site = useSite();
+  const { cart } = useCart();
+  const { buy, setQuantity } = useBuy(() => navigation.navigate('Phone'));
   const [q, setQ] = useState('');
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -64,30 +72,36 @@ export default function SearchScreen({ navigation }: NativeStackScreenProps<Cust
   return (
     <View style={styles.screen}>
       <View style={styles.searchBar}>
-        <Input value={q} onChangeText={onChange} placeholder={hi.search.placeholder} autoFocus />
+        <Input value={q} onChangeText={onChange} placeholder={site.search.placeholder} autoFocus />
       </View>
 
+      {/*
+       * Distinct keys per list below: all three sit in one element slot, and without them React
+       * reuses a single FlatList and flips numColumns 1→n when results arrive, which React
+       * Native rejects outright — the search screen died the moment anyone typed.
+       */}
       {loading ? (
-        <FlatList data={[1, 2, 3]} keyExtractor={(i) => String(i)} renderItem={() => <ListRowSkeleton />} />
+        <FlatList key="search-skeleton" data={[1, 2, 3]} keyExtractor={(i) => String(i)} renderItem={() => <ListRowSkeleton />} />
       ) : q.trim().length > 0 && q.trim().length < 2 ? (
         <EmptyState icon="🔍" title={hi.search.minChars} />
       ) : error ? (
         <EmptyState icon="⚠️" title={error} />
       ) : result && result.items.length === 0 ? (
         <FlatList
+          key="search-empty"
           data={[]}
           keyExtractor={() => 'x'}
           renderItem={null}
           ListHeaderComponent={
             <View style={styles.emptyWrap}>
-              <Text style={styles.emptyTitle}>{hi.search.empty}</Text>
+              <Text style={styles.emptyTitle}>{site.search.zero}</Text>
               {result.suggestions.length > 0 ? (
                 <>
-                  <Text style={styles.emptyHelp}>{hi.search.emptyHelp}</Text>
+                  <Text style={styles.emptyHelp}>{site.search.zeroSuggest}</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2], marginTop: space[2] }}>
                     {result.suggestions.map((p) => (
                       <Text key={p.id} style={styles.suggestionChip} onPress={() => navigation.navigate('Product', { slug: p.slug })}>
-                        {p.nameHi || p.name}
+                        {pick(p.name, p.nameHi)}
                       </Text>
                     ))}
                   </View>
@@ -97,10 +111,10 @@ export default function SearchScreen({ navigation }: NativeStackScreenProps<Cust
                 <Text style={styles.thanks}>धन्यवाद! हम जल्द यह सामान लाएंगे।</Text>
               ) : (
                 <View style={styles.requestForm}>
-                  <Text style={styles.requestTitle}>{hi.search.tellUsMissing}</Text>
+                  <Text style={styles.requestTitle}>{site.search.tellUs}</Text>
                   <Input value={requestName} onChangeText={setRequestName} placeholder="आपका नाम" maxLength={120} />
                   <Input value={requestPhone} onChangeText={(v) => setRequestPhone(v.replace(/\D/g, '').slice(0, 10))} placeholder={hi.auth.phonePlaceholder} keyboardType="number-pad" maxLength={10} />
-                  <Button label={hi.search.tellUsMissing} onPress={() => void submitRequest()} size="sm" />
+                  <Button label={site.search.tellUs} onPress={() => void submitRequest()} size="sm" />
                 </View>
               )}
             </View>
@@ -108,21 +122,22 @@ export default function SearchScreen({ navigation }: NativeStackScreenProps<Cust
         />
       ) : result ? (
         <FlatList
+          key={`search-results-${cols}`}
           data={result.items}
-          numColumns={2}
+          numColumns={cols}
           keyExtractor={(p) => String(p.id)}
           contentContainerStyle={{ padding: space[4], gap: space[3] }}
           columnWrapperStyle={{ gap: space[3] }}
           renderItem={({ item }: { item: ProductCardType }) => (
             <View style={{ flex: 1 }}>
-              <ProductCard
-                product={item}
+              <ProductTile
+                p={item}
                 quantityInCart={quantityFor(item.id)}
                 onPress={() => navigation.navigate(item.itemType === 'SERVICE' ? 'Service' : 'Product', { slug: item.slug })}
-                onAdd={() => void addItem(item.id, 1)}
+                onAdd={() => void buy(item.id, 1)}
                 onQtyChange={(qty) => {
                   const it = cart?.items.find((i) => i.productId === item.id);
-                  if (it) void setQty(it.id, qty);
+                  return it ? setQuantity(it.id, qty) : Promise.resolve();
                 }}
               />
             </View>

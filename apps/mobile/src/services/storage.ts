@@ -17,7 +17,18 @@ export const TokenStore = {
   async save(tokens: StoredTokens): Promise<void> {
     // Keychain stores one username/password pair per service — encode both tokens as JSON
     // in the "password" slot so a single secure entry holds the pair atomically.
-    await Keychain.setGenericPassword('fb', JSON.stringify(tokens), { service: TOKEN_SERVICE });
+    try {
+      await Keychain.setGenericPassword('fb', JSON.stringify(tokens), { service: TOKEN_SERVICE });
+    } catch {
+      /*
+       * Some low-end Android builds have a flaky keystore (it is the first thing to break on a
+       * phone that has been factory-reset badly). Failing here used to abort the login that had
+       * just succeeded on the server. The session still works — api.ts holds the tokens in
+       * memory — the customer just signs in again after a restart, which beats not being able
+       * to sign in at all. ⚠️ Still never AsyncStorage: a token on disk in the clear is worse
+       * than a token that does not survive a restart.
+       */
+    }
   },
   async load(): Promise<StoredTokens | null> {
     try {
@@ -32,7 +43,11 @@ export const TokenStore = {
     }
   },
   async clear(): Promise<void> {
-    await Keychain.resetGenericPassword({ service: TOKEN_SERVICE });
+    try {
+      await Keychain.resetGenericPassword({ service: TOKEN_SERVICE });
+    } catch {
+      // Logging out must always complete; api.ts has already dropped the in-memory copies.
+    }
   },
 };
 
@@ -42,6 +57,8 @@ const KEYS = {
   village: 'fb.village', // last picked village (mirrors web's fb_village cookie)
   notifAskedAt: 'fb.notifAskedAt',
   locationQueue: 'fb.locationQueue', // offline rider pings, capped at 20 (A19)
+  staffMode: 'fb.staffMode', // 'customer' | 'staff' — which side a staff member last used
+  lang: 'fb.lang', // 'hi' | 'en' — mirrors the website's fb_lang cookie
 } as const;
 
 function randomId(): string {
@@ -50,12 +67,44 @@ function randomId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
+/**
+ * Held in memory after the first read so the hot path — every single API call sends this as
+ * X-Device-Id — touches the disk once per launch rather than once per request.
+ */
+let deviceIdCache: string | null = null;
+
 export async function getOrCreateDeviceId(): Promise<string> {
-  const existing = await AsyncStorage.getItem(KEYS.deviceId);
-  if (existing) return existing;
-  const id = randomId();
-  await AsyncStorage.setItem(KEYS.deviceId, id);
+  if (deviceIdCache) return deviceIdCache;
+  /*
+   * ⚠️ This must never throw and never hang.
+   *
+   * It is awaited inside rawFetch before the request goes out, so a slow or broken
+   * AsyncStorage used to stop EVERY call from being made at all — and the caller turned that
+   * into "इंटरनेट नहीं मिल रहा", on a phone whose internet was fine. On the cheap, nearly-full
+   * Android phones this shop is built for, a stalled SQLite write is a real thing, and the
+   * whole app going dark because a convenience value could not be read is not acceptable.
+   *
+   * The id only has to be stable for this install; if the disk will not cooperate we keep a
+   * generated one in memory and carry on.
+   */
+  const fallback = (): string => (deviceIdCache ??= randomId());
+  try {
+    const existing = await withTimeout(AsyncStorage.getItem(KEYS.deviceId), 1500);
+    if (existing) return (deviceIdCache = existing);
+  } catch {
+    return fallback();
+  }
+  const id = fallback();
+  void AsyncStorage.setItem(KEYS.deviceId, id).catch(() => undefined); // best effort, not awaited
   return id;
+}
+
+/** Resolves with the promise, or rejects once `ms` have passed — never left pending. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('STORAGE_TIMEOUT')), ms)),
+  ]);
 }
 
 export interface StoredVillage {
@@ -64,16 +113,46 @@ export interface StoredVillage {
   nameHi: string | null;
 }
 export async function getLastVillage(): Promise<StoredVillage | null> {
-  const raw = await AsyncStorage.getItem(KEYS.village);
-  if (!raw) return null;
+  // A remembered village is a convenience. If the disk is slow or unhappy, the customer simply
+  // picks it again — the screen waiting on this must not fail because of it.
   try {
-    return JSON.parse(raw) as StoredVillage;
+    const raw = await withTimeout(AsyncStorage.getItem(KEYS.village), 1500);
+    return raw ? (JSON.parse(raw) as StoredVillage) : null;
   } catch {
     return null;
   }
 }
 export async function setLastVillage(v: StoredVillage): Promise<void> {
-  await AsyncStorage.setItem(KEYS.village, JSON.stringify(v));
+  try {
+    await AsyncStorage.setItem(KEYS.village, JSON.stringify(v));
+  } catch {
+    // keeping it for next launch is a bonus, not a requirement
+  }
+}
+
+/**
+ * Which side of the app a staff member last used.
+ *
+ * The owner opens this app dozens of times a day. Asking "staff or customer?" on every launch
+ * was two extra taps each time; the website asks once at login and then keeps you in your panel.
+ * Remembered here, and changed from the Menu (staff) or the account tab (customer).
+ */
+export type StaffMode = 'customer' | 'staff';
+export async function getStaffMode(): Promise<StaffMode | null> {
+  try {
+    const raw = await withTimeout(AsyncStorage.getItem(KEYS.staffMode), 1500);
+    return raw === 'customer' || raw === 'staff' ? raw : null;
+  } catch {
+    return null;
+  }
+}
+export async function setStaffMode(m: StaffMode | null): Promise<void> {
+  try {
+    if (m === null) await AsyncStorage.removeItem(KEYS.staffMode);
+    else await AsyncStorage.setItem(KEYS.staffMode, m);
+  } catch {
+    // remembering is a convenience; the choice screen is the fallback
+  }
 }
 
 /** "Later" on the notification soft-ask silences it for 7 days (A25). */
@@ -117,4 +196,25 @@ export async function getQueuedPings(): Promise<QueuedPing[]> {
 }
 export async function clearQueuedPings(): Promise<void> {
   await AsyncStorage.removeItem(KEYS.locationQueue);
+}
+
+/**
+ * Which language the customer reads the shop in — the app's half of the website's `fb_lang`
+ * cookie (which the site keeps for a year). It is a per-device preference, not account data:
+ * the same person may well want Hindi on the family phone and English on their own.
+ */
+export async function getLang(): Promise<string | null> {
+  try {
+    return await withTimeout(AsyncStorage.getItem(KEYS.lang), 1500);
+  } catch {
+    // A missed preference means Hindi, which is the default anyway — never a blocked launch.
+    return null;
+  }
+}
+export async function setLangPref(lang: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.lang, lang);
+  } catch {
+    // Remembering it for next launch is a bonus; the switch itself has already happened.
+  }
 }

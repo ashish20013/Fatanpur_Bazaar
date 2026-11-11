@@ -1,23 +1,30 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { CategoryNode, ProductCard as ProductCardType } from '@fb/shared-types';
 import type { CustomerStackParamList } from '../../navigation/CustomerTabs';
 import { api, ApiError, type Paged } from '../../services/api';
 import { useCart } from '../../store/cart';
-import { ProductCard } from '../../components/ProductCard';
+import { useBuy } from '../../hooks/useBuy';
+import { ProductTile } from '../../components/ProductTile';
+import { assetUrl } from '../../config';
 import { ProductCardSkeleton, ListRowSkeleton } from '../../components/Skeleton';
 import { EmptyState, ErrorState } from '../../components/EmptyState';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useName, useT } from '../../store/lang';
+import { useGridColumns } from '../../navigation/useGrid';
 
 /**
  * Doubles as the category tree browser AND the product grid for a chosen leaf category —
  * there is no separate "product list" screen in §10, so drilling into a leaf swaps this
  * screen's body from a tree list to a paginated product grid instead of pushing a new route.
  */
-export default function CategoriesScreen({ navigation }: NativeStackScreenProps<CustomerStackParamList, 'Categories'>): React.JSX.Element {
-  const { cart, addItem, setQty } = useCart();
+export default function CategoriesScreen({ navigation, route }: NativeStackScreenProps<CustomerStackParamList, 'Categories'>): React.JSX.Element {
+  const cols = useGridColumns();
+  const pick = useName();
+  const hi = useT();
+  const { cart } = useCart();
+  const { buy, setQuantity } = useBuy(() => navigation.navigate('Phone'));
   const [tree, setTree] = useState<CategoryNode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [path, setPath] = useState<CategoryNode[]>([]);
@@ -27,12 +34,43 @@ export default function CategoriesScreen({ navigation }: NativeStackScreenProps<
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  const wanted = route.params?.slug ?? null;
+
   useEffect(() => {
     api
       .get<CategoryNode[]>('/catalog/categories')
       .then(setTree)
       .catch((e) => setError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong));
   }, []);
+
+  /*
+   * Arriving with a slug — from the rail, or from a section's "सब देखें" — must land on THAT
+   * category's goods, the way /kirana does on the website. It used to drop everyone on the
+   * list of all categories instead, so "सब देखें (67)" showed no किराना at all.
+   */
+  /*
+   * ⚠️ `honoured` and not `leaf`: the guard used to be "already showing a category? then ignore
+   * the slug", which is right while somebody is drilling down by hand but wrong when a NEW slug
+   * arrives — from a link, or from tapping a notification while this screen is already open. The
+   * second link was simply dropped and the customer stayed on the previous category.
+   */
+  const honoured = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!wanted || !tree || honoured.current === wanted) return;
+    honoured.current = wanted;
+    const find = (nodes: CategoryNode[]): CategoryNode | null => {
+      for (const n of nodes) {
+        if (n.slug === wanted) return n;
+        const hit = find(n.children);
+        if (hit) return hit;
+      }
+      return null;
+    };
+    const node = find(tree);
+    if (node) void openLeaf(node);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, tree]);
 
   const currentLevel = leaf ? [] : path.length ? path[path.length - 1].children : (tree ?? []);
 
@@ -85,15 +123,16 @@ export default function CategoriesScreen({ navigation }: NativeStackScreenProps<
     <View style={styles.screen}>
       {(path.length > 0 || leaf) && (
         <Pressable style={styles.backRow} onPress={goBack}>
-          <Text style={styles.backText}>← {leaf ? leaf.nameHi || leaf.name : path[path.length - 1]?.nameHi || path[path.length - 1]?.name}</Text>
+          <Text style={styles.backText}>← {leaf ? pick(leaf.name, leaf.nameHi) : pick(path[path.length - 1]?.name ?? '', path[path.length - 1]?.nameHi)}</Text>
         </Pressable>
       )}
 
       {leaf ? (
         products === null ? (
           <FlatList
+            key={`grid-skeleton-${cols}`}
             data={[1, 2, 3, 4]}
-            numColumns={2}
+            numColumns={cols}
             keyExtractor={(i) => String(i)}
             renderItem={() => <ProductCardSkeleton />}
             contentContainerStyle={styles.grid}
@@ -102,8 +141,9 @@ export default function CategoriesScreen({ navigation }: NativeStackScreenProps<
           <EmptyState icon="🗂️" title={hi.categories.empty} />
         ) : (
           <FlatList
+            key={`grid-products-${cols}`}
             data={products}
-            numColumns={2}
+            numColumns={cols}
             keyExtractor={(p) => String(p.id)}
             contentContainerStyle={styles.grid}
             columnWrapperStyle={{ gap: space[3] }}
@@ -111,14 +151,14 @@ export default function CategoriesScreen({ navigation }: NativeStackScreenProps<
             onEndReached={() => void loadMore()}
             renderItem={({ item }) => (
               <View style={{ flex: 1, marginBottom: space[3] }}>
-                <ProductCard
-                  product={item}
+                <ProductTile
+                  p={item}
                   quantityInCart={quantityFor(item.id)}
                   onPress={() => navigation.navigate(item.itemType === 'SERVICE' ? 'Service' : 'Product', { slug: item.slug })}
-                  onAdd={() => void addItem(item.id, 1)}
+                  onAdd={() => void buy(item.id, 1)}
                   onQtyChange={(q) => {
                     const it = cart?.items.find((i) => i.productId === item.id);
-                    if (it) void setQty(it.id, q);
+                    return it ? setQuantity(it.id, q) : Promise.resolve();
                   }}
                 />
               </View>
@@ -126,19 +166,20 @@ export default function CategoriesScreen({ navigation }: NativeStackScreenProps<
           />
         )
       ) : tree === null ? (
-        <FlatList data={[1, 2, 3, 4, 5]} keyExtractor={(i) => String(i)} renderItem={() => <ListRowSkeleton />} />
+        <FlatList key="list-skeleton" data={[1, 2, 3, 4, 5]} keyExtractor={(i) => String(i)} renderItem={() => <ListRowSkeleton />} />
       ) : currentLevel.length === 0 ? (
         <EmptyState icon="🗂️" title={hi.categories.empty} />
       ) : (
         <FlatList
+          key="list-tree"
           data={currentLevel}
           keyExtractor={(c) => String(c.id)}
           getItemLayout={(_d, i) => ({ length: 64, offset: 64 * i, index: i })}
           renderItem={({ item }) => (
             <Pressable style={styles.row} onPress={() => onNode(item)}>
-              {item.image ? <Image source={{ uri: item.image }} style={styles.rowImage} /> : <View style={[styles.rowImage, styles.rowImagePlaceholder]} />}
+              {item.image ? <Image source={{ uri: assetUrl(item.image) }} style={styles.rowImage} /> : <View style={[styles.rowImage, styles.rowImagePlaceholder]} />}
               <View style={{ flex: 1 }}>
-                <Text style={styles.rowName}>{item.nameHi || item.name}</Text>
+                <Text style={styles.rowName}>{pick(item.name, item.nameHi)}</Text>
                 <Text style={styles.rowCount}>{item.productCount} सामान</Text>
               </View>
               <Text style={styles.chevron}>›</Text>

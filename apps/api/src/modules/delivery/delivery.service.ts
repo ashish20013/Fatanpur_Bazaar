@@ -19,6 +19,7 @@ import { OrderEvents } from '../orders/order-events';
 import { CronService } from '../jobs/cron.service';
 import { TrackingService } from '../tracking/tracking.service';
 import { TrackingGateway } from '../tracking/tracking.gateway';
+import { AlertsService } from '../alerts/alerts.service';
 
 const ACTIVE = ['OFFERED', 'ACCEPTED', 'PICKED_UP'];
 const MAX_OTP_ATTEMPTS = 3;
@@ -43,6 +44,7 @@ export class DeliveryService implements OnModuleInit {
     private readonly cron: CronService,
     private readonly tracking: TrackingService,
     private readonly gateway: TrackingGateway,
+    private readonly alerts: AlertsService,
   ) {}
 
   onModuleInit(): void {
@@ -53,6 +55,13 @@ export class DeliveryService implements OnModuleInit {
     this.events.onOrderConfirmed((no) => void this.announceToPool(no).catch((e) => Log.warn('pool.announce_failed', { orderNumber: no, err: String(e) })));
     // A pool order nobody takes within pool_unclaimed_alert_min → re-ring the riders and alert the admin.
     this.cron.register({ name: 'delivery:pool-alert', schedule: { every: true }, run: () => this.poolAlert() });
+    /*
+     * Safety net for the escalation clock. The alert module keeps a real timer per order so a
+     * two-minute threshold is honoured to the second; this sweep is what catches an order whose
+     * timer was lost to a restart or a deploy. `escalate` is idempotent, so the two never
+     * double-alert the same order in the same window.
+     */
+    this.cron.register({ name: 'alerts:escalation-sweep', schedule: { every: true }, run: () => this.alerts.sweep() });
   }
 
   // ───────────── state-machine hook ─────────────
@@ -186,6 +195,7 @@ export class DeliveryService implements OnModuleInit {
       await this.notify.send({ userId: riderId, type: 'delivery.assigned', title: isService ? 'नया सेवा काम' : 'नई डिलीवरी', body: `${orderNumber} · ${order.ship_village ?? ''} — ऐप में स्वीकार करें`, linkUrl: `/delivery/${assignmentId}`, channels: ['IN_APP', 'PUSH'], dedupeKey: `assign:${assignmentId}` }, trx);
       await this.notify.send({ userId: order.customer_id, type: 'delivery.assigned', title: 'डिलीवरी पार्टनर तय हुआ', body: `${rider.name ?? 'डिलीवरी पार्टनर'} आपका ऑर्डर लाएंगे।${isService ? '' : ` डिलीवरी कोड: ${otp}`}`, linkUrl: `/mera/order/${orderNumber}`, channels: ['IN_APP', 'PUSH'], dedupeKey: `assign:${assignmentId}:c` }, trx);
       afterCommit.push(() => {
+        this.alerts.resolve(orderNumber, `assigned to #${riderId}`);
         this.gateway.joinRiderToAssignment(riderId, assignmentId, orderNumber);
         this.gateway.emitAssigned(orderNumber, order.customer_id, { name: rider.name, phone: localPhone(rider.phone) }, isService ? null : otp);
         // Admin took it off the board → it leaves every rider's pool too.
@@ -270,6 +280,7 @@ export class DeliveryService implements OnModuleInit {
       // The admin only watches — a quiet line on the monitor, not a job to do.
       await this.notify.sendToPermission('orders.view_all', { type: 'delivery.claimed', title: 'राइडर ने ऑर्डर लिया', body: `${orderNumber}${order.ship_village ? ` · ${order.ship_village}` : ''} · ${riderRow?.name ?? 'राइडर'}`, linkUrl: `/admin/orders/${orderNumber}`, channels: ['IN_APP', 'PUSH'], dedupeKey: `claimed:${assignmentId}` }, trx);
       afterCommit.push(() => {
+        this.alerts.resolve(orderNumber, `claimed by #${rider.id}`);
         this.gateway.joinRiderToAssignment(rider.id, assignmentId, orderNumber);
         this.gateway.emitAssigned(orderNumber, order.customer_id, { name: riderRow?.name ?? null, phone: localPhone(String(riderRow?.phone ?? '')) }, otp);
         this.gateway.emitPoolGone(orderNumber, riderRow?.name ?? null);
@@ -307,6 +318,18 @@ export class DeliveryService implements OnModuleInit {
       dedupeKey: `pool:${orderNumber}`,
     });
     this.gateway.emitPoolNew({ orderNumber, village: order.ship_village ?? null, collectAmount: collect, itemCount, etaMinutes: Number(order.eta_minutes ?? 45), distanceKm: order.distance_km === null ? null : Number(order.distance_km) });
+    /*
+     * The ringing alert, the watchers' quiet copy, and the escalation clock.
+     *
+     * ⚠️ Never allowed to throw into the caller: this runs after the order has committed, and an
+     * order that exists must not be reported as failed because a notification could not be
+     * built. The pool push above has already gone out either way.
+     */
+    try {
+      await this.alerts.onOrderAnnounced(orderNumber);
+    } catch (e) {
+      Log.warn('alert.announce_failed', { orderNumber, err: String(e) });
+    }
   }
 
   /** Cron: a confirmed order nobody has claimed for pool_unclaimed_alert_min → re-ring + admin alert. */
@@ -326,6 +349,18 @@ export class DeliveryService implements OnModuleInit {
       await this.notify.sendToOnDutyRiders({ type: 'pool.new', title: '🛵 ऑर्डर अब भी बाकी है', body: `${o.order_number}${where} — अभी तक किसी ने नहीं लिया, जल्दी लो!`, linkUrl: '/delivery', channels: ['IN_APP', 'PUSH'], data: { ...POOL_PUSH_DATA, orderNumber: o.order_number }, dedupeKey: `poolre:${o.order_number}:${bucket}` });
     }
     return `alerted ${rows.length}`;
+  }
+
+  /**
+   * A rider declines an order he was offered from the pool.
+   *
+   * The pool has no per-rider offer row to reject, so this is the alert module's job; the method
+   * lives here only so the rider's controller has one service to talk to. It refuses anyone who
+   * is not a delivery boy for the same reason `claim` does.
+   */
+  async declinePool(orderNumber: string, rider: AuthUser, reason: string): Promise<unknown> {
+    if (rider.role !== 'DELIVERY_BOY') throw forbidden();
+    return this.alerts.decline(orderNumber, rider, reason);
   }
 
   // ───────────── rider actions ─────────────

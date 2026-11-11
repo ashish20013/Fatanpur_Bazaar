@@ -5,7 +5,7 @@ import type { DeliveryStackParamList } from '../../navigation/DeliveryStack';
 import { LocationTracker } from '../../services/location';
 import { Button } from '../../components/Button';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { en } from '../../i18n/en';
 
 /** Rider-side mirror of A19: no map bundled (§9 keeps low-end devices light) — just proof that
  * sharing is active, so the rider knows the customer can see them. */
@@ -26,11 +26,11 @@ export default function LiveLocationScreen({ route, navigation }: NativeStackScr
   return (
     <View style={styles.screen}>
       <View style={[styles.dot, active ? styles.dotLive : styles.dotOff]} />
-      <Text style={styles.title}>{active ? 'लोकेशन शेयर हो रही है' : 'लोकेशन बंद है'}</Text>
-      <Text style={styles.help}>{hi.orders.orderNo(orderNumber)} — ग्राहक आपकी लाइव लोकेशन देख सकता है</Text>
-      {lowBattery ? <Text style={styles.battery}>🔋 {hi.delivery.batteryLow}</Text> : null}
+      <Text style={styles.title}>{active ? en.delivery.sharingOn : en.delivery.sharingOff}</Text>
+      <Text style={styles.help}>{en.delivery.sharingHelp(en.orders.orderNo(orderNumber))}</Text>
+      {lowBattery ? <Text style={styles.battery}>🔋 {en.delivery.batteryLow}</Text> : null}
       <View style={{ height: space[8] }} />
-      <Button label={hi.delivery.complete} onPress={() => navigation.navigate('CompleteDelivery', { assignmentId, orderNumber })} />
+      <Button label={en.delivery.complete} onPress={() => navigation.navigate('CompleteDelivery', { assignmentId, orderNumber })} />
     </View>
   );
 }

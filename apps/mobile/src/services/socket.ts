@@ -46,3 +46,24 @@ export function onSocketEvent<K extends keyof ServerToClientEvents>(event: K, ha
     s.off(event, handler as never);
   };
 }
+
+/**
+ * Alert events, by name.
+ *
+ * ⚠️ Deliberately untyped at the edge, and deliberately NOT added to `@fb/shared-types`: that
+ * package is shared with the live website, and the order-alert events belong to the app alone.
+ * Widening a shared contract to save a cast here would mean rebuilding the website to add
+ * events it will never listen for. The payloads are validated where they are used (the alert
+ * store reads only the fields it needs and tolerates their absence), which is the right place
+ * for it anyway — this data comes off a socket and is not to be trusted by shape alone.
+ */
+export function onAlert(event: string, handler: (payload: Record<string, unknown>) => void): () => void {
+  const s = connectSocket();
+  const wrapped = (payload: unknown): void => {
+    handler(payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {});
+  };
+  s.on(event as never, wrapped as never);
+  return () => {
+    s.off(event as never, wrapped as never);
+  };
+}

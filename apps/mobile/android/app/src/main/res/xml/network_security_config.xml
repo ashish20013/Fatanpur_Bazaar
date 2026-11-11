@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The app talks to api.fatanpurbazaar.com over HTTPS and nothing else.
+
+  ⚠️ `android:usesCleartextTraffic="true"` used to sit on <application>, which permits plain HTTP
+  to ANY host — a customer on a village wifi or a shared hotspot could have had their session
+  token read or rewritten in transit. Cleartext is now refused by default and allowed only for
+  the loopback and emulator addresses a developer runs a local API on.
+-->
 <network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <!-- Development only: the emulator's host bridge and loopback (adb reverse). -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
     </domain-config>
 </network-security-config>

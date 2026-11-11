@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProductDetail } from '@fb/shared-types';
 import type { CustomerStackParamList } from '../../navigation/CustomerTabs';
@@ -9,11 +9,16 @@ import { Money } from '../../components/Money';
 import { Button } from '../../components/Button';
 import { QtyStepper } from '../../components/QtyStepper';
 import { Input } from '../../components/Input';
-import { ProductCard } from '../../components/ProductCard';
+import { ProductTile } from '../../components/ProductTile';
+import { Icon } from '../../components/Icon';
 import { Skeleton } from '../../components/Skeleton';
 import { ErrorState } from '../../components/EmptyState';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useName, useT, useUnitLabel } from '../../store/lang';
+import { useSite } from '../../store/lang';
+import { rupees } from '../../utils/format';
+import { assetUrl, CONFIG } from '../../config';
+import { useBuy } from '../../hooks/useBuy';
 
 interface Review {
   id: number;
@@ -24,8 +29,13 @@ interface Review {
 }
 
 export default function ProductScreen({ route, navigation }: NativeStackScreenProps<CustomerStackParamList, 'Product'>): React.JSX.Element {
+  const pick = useName();
+  const unitOf = useUnitLabel();
+  const hi = useT();
+  const site = useSite();
   const { slug } = route.params;
-  const { cart, addItem, setQty } = useCart();
+  const { cart } = useCart();
+  const { buy, setQuantity } = useBuy(() => navigation.navigate('Phone'));
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [reviews, setReviews] = useState<Review[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +49,7 @@ export default function ProductScreen({ route, navigation }: NativeStackScreenPr
       .get<ProductDetail>(`/catalog/products/${slug}`)
       .then((p) => {
         setProduct(p);
-        navigation.setOptions({ title: p.nameHi || p.name });
+        navigation.setOptions({ title: pick(p.name, p.nameHi) });
         return api.get<Review[]>(`/catalog/products/${p.id}/reviews`);
       })
       .then(setReviews)
@@ -48,6 +58,19 @@ export default function ProductScreen({ route, navigation }: NativeStackScreenPr
   }, [slug]);
 
   const cartItem = product ? cart?.items.find((i) => i.productId === product.id) : undefined;
+
+  /*
+   * ⚠️ The picture box is as wide as the screen, measured — it used to be a hard-coded 360.
+   *
+   * On this phone 360 of anything is not the width of the window, so the box sat 33dp short of
+   * the right edge: the photo was visibly off-centre, with a white strip down one side, and the
+   * paging gallery stopped half-way between images. A square the exact width of the window,
+   * with `contain` inside it, puts the picture in the middle and shows all of it — a tall bottle
+   * and a wide packet both fit whole, and the box is the same size for every product, so the
+   * name and price below never jump as you swipe.
+   */
+  const { width } = useWindowDimensions();
+  const imageBox = { width, height: width, backgroundColor: colors.white };
 
   const notifyMe = async (): Promise<void> => {
     if (!product || !/^[6-9]\d{9}$/.test(notifyPhone)) return;
@@ -81,15 +104,17 @@ export default function ProductScreen({ route, navigation }: NativeStackScreenPr
           showsHorizontalScrollIndicator={false}
           data={product.images.length ? product.images : product.image ? [product.image] : []}
           keyExtractor={(img, i) => `${img.url}-${i}`}
-          renderItem={({ item }) => <Image source={{ uri: item.url, width: item.width, height: item.height }} style={styles.image} resizeMode="cover" accessibilityLabel={item.alt} />}
-          ListEmptyComponent={<View style={[styles.image, styles.imagePlaceholder]} />}
+          renderItem={({ item }) => (
+            /* `contain`, on white — the website's `object-contain bg-white`. A tall bottle and a
+               wide packet are both shown whole and centred, instead of having their ends cut off. */
+            <Image source={{ uri: assetUrl(item.url) }} style={imageBox} resizeMode="contain" accessibilityLabel={item.alt} />
+          )}
+          ListEmptyComponent={<View style={[imageBox, styles.imagePlaceholder]} />}
         />
 
         <View style={styles.body}>
-          <Text style={styles.name}>{product.nameHi || product.name}</Text>
-          <Text style={styles.unit}>
-            {product.unitValue} {product.unit}
-          </Text>
+          <Text style={styles.name}>{pick(product.name, product.nameHi)}</Text>
+          <Text style={styles.unit}>{unitOf(product.unitValue, product.unit)}</Text>
           {product.supplier ? <Text style={styles.supplier}>{hi.product.supplierPrefix(product.supplier.name)}</Text> : null}
 
           <View style={styles.priceRow}>
@@ -116,9 +141,9 @@ export default function ProductScreen({ route, navigation }: NativeStackScreenPr
                 </View>
               )
             ) : cartItem ? (
-              <QtyStepper quantity={cartItem.quantity} onChange={(q) => void setQty(cartItem.id, q)} />
+              <QtyStepper quantity={cartItem.quantity} max={product.maxQtyPerOrder || undefined} onChange={(q) => setQuantity(cartItem.id, q)} />
             ) : (
-              <Button label={hi.product.addToCart} onPress={() => void addItem(product.id, 1)} />
+              <Button label={site.buy.buy} onPress={() => void buy(product.id, 1)} />
             )}
           </View>
 
@@ -131,19 +156,19 @@ export default function ProductScreen({ route, navigation }: NativeStackScreenPr
 
           {product.related.length > 0 ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{hi.product.related}</Text>
-              <FlatList
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                data={product.related}
-                keyExtractor={(p) => String(p.id)}
-                contentContainerStyle={{ gap: space[3] }}
-                renderItem={({ item }) => (
-                  <View style={{ width: 140 }}>
-                    <ProductCard product={item} onPress={() => navigation.push('Product', { slug: item.slug })} onAdd={() => void addItem(item.id, 1)} onQtyChange={() => undefined} />
+              <Text style={styles.sectionTitle}>{site.product.alternatives}</Text>
+              {/*
+               * Three across, not a sideways swipe. The site deliberately stopped swiping here:
+               * the peeking next card costs a third of a column, so barely two products fitted,
+               * and people scroll down far more readily than they swipe sideways.
+               */}
+              <View style={styles.relatedGrid}>
+                {product.related.slice(0, 6).map((item) => (
+                  <View key={item.id} style={styles.relatedCell}>
+                    <ProductTile p={item} onPress={() => navigation.push('Product', { slug: item.slug })} onAdd={() => void buy(item.id, 1)} onQtyChange={() => undefined} />
                   </View>
-                )}
-              />
+                ))}
+              </View>
             </View>
           ) : null}
 
@@ -169,10 +194,11 @@ export default function ProductScreen({ route, navigation }: NativeStackScreenPr
   );
 }
 
-const IMG_W = 360;
 const styles = StyleSheet.create({
+  relatedGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  // 3 across on a phone, like the site's grid-cols-3
+  relatedCell: { width: '31.8%' },
   screen: { flex: 1, backgroundColor: colors.surface },
-  image: { width: IMG_W, height: IMG_W, backgroundColor: colors.card },
   imagePlaceholder: { backgroundColor: colors.g50 },
   body: { padding: space[4] },
   name: { fontSize: t.xl, fontWeight: '700', color: colors.ink },

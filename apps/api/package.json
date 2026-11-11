@@ -14,6 +14,7 @@
     "seed": "node dist/cli.js seed",
     "seed:admin": "node dist/cli.js seed-admin",
     "cron": "node dist/cli.js cron",
+    "play-review": "node dist/cli.js play-review",
     "test:unit": "tsx --test test/unit/*.spec.ts",
     "test:int": "tsc -p tsconfig.spec.json && node scripts/copy-assets.mjs dist-spec/src && node --test --test-concurrency=1 dist-spec/test/integration/*.spec.js",
     "test": "npm run test:unit && npm run test:int",

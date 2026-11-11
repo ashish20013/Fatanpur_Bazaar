@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { launchCamera } from 'react-native-image-picker';
-import DocumentPicker from 'react-native-document-picker';
+import { pick as pickDocument, types as docTypes } from '@react-native-documents/picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { PrescriptionStatus } from '@fb/shared-types';
 import type { CustomerStackParamList } from '../../navigation/CustomerTabs';
@@ -10,7 +10,7 @@ import { Button } from '../../components/Button';
 import { EmptyState, ErrorState } from '../../components/EmptyState';
 import { ListRowSkeleton } from '../../components/Skeleton';
 import { colors, radius, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { useT } from '../../store/lang';
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -25,6 +25,7 @@ interface RxRow {
 
 /** A21 (client half): camera or a PDF file, size-checked before upload, status shown in Hindi. */
 export default function PrescriptionsScreen(_props: NativeStackScreenProps<CustomerStackParamList, 'Prescriptions'>): React.JSX.Element {
+  const hi = useT();
   const [rows, setRows] = useState<RxRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -63,7 +64,7 @@ export default function PrescriptionsScreen(_props: NativeStackScreenProps<Custo
   };
 
   const fromCamera = async (): Promise<void> => {
-    const res = await launchCamera({ mediaType: 'photo', quality: 0.85, saveToPhotos: false });
+    const res = await launchCamera({ mediaType: 'photo', quality: 0.8, saveToPhotos: false });
     const asset = res.assets?.[0];
     if (!asset?.uri) return;
     await upload({ uri: asset.uri, type: asset.type ?? 'image/jpeg', name: asset.fileName ?? 'parchi.jpg', size: asset.fileSize });
@@ -71,7 +72,13 @@ export default function PrescriptionsScreen(_props: NativeStackScreenProps<Custo
 
   const fromFile = async (): Promise<void> => {
     try {
-      const [file] = await DocumentPicker.pick({ type: [DocumentPicker.types.pdf, DocumentPicker.types.images] });
+      /*
+       * ⚠️ `react-native-document-picker` se badla gaya — wo package deprecated ho chuka hai
+       * aur React Native 0.81 me hataye gaye `GuardedResultAsyncTask` par chalta tha, jisse
+       * poora Android build fail hota tha. Naya naam `@react-native-documents/picker` hai;
+       * lautaye gaye object ke field (uri/name/type/size) wahi hain.
+       */
+      const [file] = await pickDocument({ type: [docTypes.pdf, docTypes.images] });
       if (!file?.uri) return;
       await upload({ uri: file.uri, type: file.type ?? 'application/pdf', name: file.name ?? 'parchi.pdf', size: file.size });
     } catch {

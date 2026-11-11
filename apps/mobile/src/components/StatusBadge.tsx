@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { ORDER_STATUS_LABEL_HI, TERMINAL_STATUSES, SUCCESS_STATUSES, type OrderStatus } from '@fb/shared-types';
+import { ORDER_STATUS_LABEL_EN, ORDER_STATUS_LABEL_HI, TERMINAL_STATUSES, SUCCESS_STATUSES, type OrderStatus } from '@fb/shared-types';
 import { colors, radius, space, type as t } from '../theme/tokens';
 
 function tone(status: OrderStatus): { bg: string; fg: string } {
@@ -10,11 +10,12 @@ function tone(status: OrderStatus): { bg: string; fg: string } {
   return { bg: colors.a100, fg: colors.a700 }; // in-progress
 }
 
-export function StatusBadge({ status }: { status: OrderStatus }): React.JSX.Element {
+/** `english` is for the staff panel, which is English on the website too. Customers get Hindi. */
+export function StatusBadge({ status, english }: { status: OrderStatus; english?: boolean }): React.JSX.Element {
   const { bg, fg } = tone(status);
   return (
     <View style={[styles.badge, { backgroundColor: bg }]}>
-      <Text style={[styles.text, { color: fg }]}>{ORDER_STATUS_LABEL_HI[status]}</Text>
+      <Text style={[styles.text, { color: fg }]}>{(english ? ORDER_STATUS_LABEL_EN : ORDER_STATUS_LABEL_HI)[status]}</Text>
     </View>
   );
 }

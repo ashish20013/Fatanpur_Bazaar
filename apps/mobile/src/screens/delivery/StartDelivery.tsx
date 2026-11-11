@@ -3,11 +3,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AssignmentView } from '@fb/shared-types';
 import type { DeliveryStackParamList } from '../../navigation/DeliveryStack';
-import { api, ApiError } from '../../services/api';
+import { api, ApiError, errText } from '../../services/api';
 import { LocationTracker } from '../../services/location';
 import { Button } from '../../components/Button';
 import { colors, space, type as t } from '../../theme/tokens';
-import { hi } from '../../i18n/hi';
+import { en } from '../../i18n/en';
 
 /** OUT_FOR_DELIVERY transition (A18) — the location watch is already running since ACCEPTED. */
 export default function StartDeliveryScreen({ route, navigation }: NativeStackScreenProps<DeliveryStackParamList, 'StartDelivery'>): React.JSX.Element {
@@ -25,7 +25,7 @@ export default function StartDeliveryScreen({ route, navigation }: NativeStackSc
       await LocationTracker.start(assignmentId);
       navigation.replace('LiveLocation', { assignmentId, orderNumber: a?.orderNumber ?? '' });
     } catch (e) {
-      setError(e instanceof ApiError ? e.messageHi : hi.common.somethingWrong);
+      setError(errText(e, true));
     } finally {
       setStarting(false);
     }
@@ -34,10 +34,10 @@ export default function StartDeliveryScreen({ route, navigation }: NativeStackSc
   return (
     <View style={styles.screen}>
       <Text style={styles.icon}>🏍️</Text>
-      <Text style={styles.help}>सामान उठ चुका है — डिलीवरी शुरू करें ताकि ग्राहक आपकी लाइव लोकेशन देख सके</Text>
+      <Text style={styles.help}>{en.delivery.pickedUpHelp}</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <View style={{ height: space[6] }} />
-      <Button label={hi.delivery.startDelivery} onPress={() => void start()} loading={starting} />
+      <Button label={en.delivery.startDelivery} onPress={() => void start()} loading={starting} />
     </View>
   );
 }
