@@ -61,7 +61,7 @@ export function AddressManager({ lang, initial, supportPhone, defaults, startAdd
         </button>
       )}
 
-      {list.length === 0 && !adding ? <EmptyState icon="home" title={t.account.addresses} body={t.address.landmarkHint} /> : null}
+      {list.length === 0 && !adding ? <EmptyState icon="home" title={t.account.addresses} /> : null}
 
       <ul className="grid gap-3 md:grid-cols-2">
         {list.map((a) => (

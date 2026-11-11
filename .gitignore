@@ -35,3 +35,7 @@ playwright-report/
 apps/mobile/android/build-output.txt
 _to_delete/
 apps/mobile/scripts/patch-native-modules.sh
+
+# CI check ke liye banaye gaye temp archive
+_ci-*.tgz
+_i18n-*.tgz

@@ -293,7 +293,11 @@ export class AuthService {
 
   /**
    * THE ONLY public account-creation path. `role` is the literal CUSTOMER — never a variable,
-   * parameter or spread (ROLE_PERMISSION_MATRIX §0 layer 3; CI greps for `...dto`).
+   * parameter or spread (ROLE_PERMISSION_MATRIX §0 layer 3).
+   *
+   * `npm run check:no-spread` is file me spread ka pattern dhoondhta hai aur mile to CI fail
+   * kar deta hai — isliye yahan us pattern ko comment me likhna bhi mana hai, warna check
+   * apne hi comment par atak jaata hai.
    */
   private async createCustomer(trx: Knex.Transaction, phone: string, name: string | undefined, referral: string | undefined, ip: string | null): Promise<UserRow> {
     let userId = 0;

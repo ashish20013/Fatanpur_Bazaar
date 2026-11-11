@@ -497,7 +497,7 @@ export const en: Dict = {
   },
 
   addr2: {
-    guardian: '',
+    guardian: 'Father / husband / guardian name',
     guardianHint: '',
     altPhone: 'Alternate mobile',
     altPhoneHint: 'We call this if the first number is unreachable',

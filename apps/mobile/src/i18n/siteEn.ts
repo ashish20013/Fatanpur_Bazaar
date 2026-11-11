@@ -510,15 +510,15 @@ export const siteEn: SiteDict = {
 
   addr2: {
     guardian: 'Father / husband / guardian name',
-    guardianHint: 'e.g. Ramlal — this is how houses are found in the village',
+    guardianHint: '',
     altPhone: 'Alternate mobile',
     altPhoneHint: 'We call this if the first number is unreachable',
     district: 'District',
     pincode: 'PIN code',
     directions: 'How to reach',
-    directionsHint: 'e.g. From the main road go east, second lane, opposite the primary school',
+    directionsHint: '',
     note: 'Note for the delivery partner',
-    noteHint: 'e.g. Call before coming, dog at the gate',
+    noteHint: '',
     receiver: 'Receiver’s name',
     step1: 'Village',
     step2: 'House address',
