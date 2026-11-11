@@ -37,5 +37,6 @@ _to_delete/
 apps/mobile/scripts/patch-native-modules.sh
 
 # CI check ke liye banaye gaye temp archive
-_ci-*.tgz
-_i18n-*.tgz
+_*-check.tgz
+_ci-scripts.tgz
+_ci-check.tgz
