@@ -144,8 +144,15 @@ jobs:
             # Fix STORAGE_PATH to use the symlink (relative to app root)
             sed -i \"s|^STORAGE_PATH=.*|STORAGE_PATH=./storage|\" $BASE/config/.env
 
-            # Run seed (idempotent: fills missing data, never overwrites admin changes)
-            node dist/cli.js seed 2>&1 | tail -20
+            # ⚠️ Seed yahan se JAAN-BOOJHKAR hata diya gaya (12 Nov 2026).
+            #
+            # Seed idempotent tha — par iska matlab sirf itna tha ki wo maujooda row ko
+            # overwrite nahi karta. Jo row thi hi nahi, use wo daal deta tha. 12 Nov ko isi ne
+            # catalog-v3 ke 54 product (fast-food, mithai, lab test) live dukaan me daal diye —
+            # seed ke daam aur stock ke saath, bina photo ke, bina kisi ke kahe.
+            #
+            # Live data ko deploy chhuega nahi. Seed chalana ho to maalik khud chalaye:
+            #   cd ~/domains/api.fatanpurbazaar.com/hbuilds/current/nodejs && node dist/cli.js seed
           "
 
           # 4. Atomic symlink swap (current -> new version)
